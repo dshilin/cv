@@ -1,13 +1,14 @@
-import { Link, Navigate, Route, Routes, useOutletContext, useParams } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { AppShell } from './AppShell'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { SourcesPage } from '../features/sources/SourcesPage'
 import { SearchProfilesPage } from '../features/search/SearchProfilesPage'
 import { JobsPage } from '../features/jobs/JobsPage'
 import { JobDetailsPage } from '../features/jobs/JobDetailsPage'
+import { ApplicationReviewPage } from '../features/applications/ApplicationReviewPage'
 import { evaluateProfileReadiness } from '../domain/readiness'
 import type { ExperienceProfile } from '../domain/profile'
-import type { JobService, ProfileService } from '../services/contracts'
+import type { ApplicationService, JobService, ProfileService } from '../services/contracts'
 
 function PlaceholderPage({ title }: { title: string }) {
   return <h1>{title}</h1>
@@ -29,7 +30,13 @@ function JobDetailsRoute({ jobService }: { jobService?: JobService }) {
   return <JobDetailsPage key={id} jobService={jobService} />
 }
 
-export function AppRoutes({ profileService, jobService }: { profileService?: ProfileService; jobService?: JobService } = {}) {
+function ApplicationRoute({ applicationService, jobService }: { applicationService?: ApplicationService; jobService?: JobService }) {
+  const [searchParams] = useSearchParams()
+  const jobId = searchParams.get('jobId')
+  return <ApplicationReviewPage key={jobId} jobId={jobId} applicationService={applicationService} jobService={jobService} />
+}
+
+export function AppRoutes({ profileService, jobService, applicationService }: { profileService?: ProfileService; jobService?: JobService; applicationService?: ApplicationService } = {}) {
   return (
     <Routes>
       <Route element={<AppShell profileService={profileService} />}>
@@ -39,7 +46,7 @@ export function AppRoutes({ profileService, jobService }: { profileService?: Pro
         <Route path="/search" element={<ReadySearchRoute />} />
         <Route path="/jobs" element={<JobsPage jobService={jobService} />} />
         <Route path="/jobs/:id" element={<JobDetailsRoute jobService={jobService} />} />
-        <Route path="/applications" element={<PlaceholderPage title="Отклики" />} />
+        <Route path="/applications" element={<ApplicationRoute applicationService={applicationService} jobService={jobService} />} />
         <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />
         <Route path="*" element={<Navigate to="/profile" replace />} />
       </Route>

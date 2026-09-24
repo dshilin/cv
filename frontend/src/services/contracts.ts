@@ -1,4 +1,5 @@
 import type { ExperienceProfile } from '../domain/profile'
+import type { ApplicationPackage, SendResult } from '../domain/application'
 import type { SearchProfile, SourceConnection } from '../domain/search'
 
 export type UpdateFactInput = { id: string; value: string; provenance: string }
@@ -60,4 +61,10 @@ export interface JobDetails extends JobSummary {
 export interface JobService {
   list(): Promise<JobSummary[]>
   get(id: string): Promise<JobDetails>
+}
+
+export interface ApplicationService {
+  prepare(jobId: string): Promise<ApplicationPackage>
+  confirmContent(id: string): Promise<ApplicationPackage>
+  send(id: string, idempotencyKey: string): Promise<SendResult>
 }

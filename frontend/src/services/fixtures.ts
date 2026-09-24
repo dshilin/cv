@@ -1,6 +1,7 @@
 import type { ExperienceProfile, ProfileFact, ProfileSection } from '../domain/profile'
+import { canSendApplication, type ApplicationPackage, type GeneratedDocument, type SendResult } from '../domain/application'
 import { isSourceAvailable, validateSearchActivation, type SearchProfile, type SourceConnection } from '../domain/search'
-import type { JobDetails, JobService, ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SourceService, UpdateFactInput } from './contracts'
+import type { ApplicationService, JobDetails, JobService, ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SourceService, UpdateFactInput } from './contracts'
 
 const initialProfile: ExperienceProfile = {
   sections: {
@@ -185,3 +186,72 @@ export function createFixtureJobService(seed: JobDetails[] = initialJobs): JobSe
 }
 
 export const fixtureJobService = createFixtureJobService()
+
+export function createFixtureApplicationService(profileService: ProfileService, jobService: JobService): ApplicationService {
+  const packages = new Map<string, ApplicationPackage>()
+  const results = new Map<string, SendResult>()
+
+  function findPackage(id: string): ApplicationPackage {
+    const pkg = packages.get(id)
+    if (!pkg) throw new Error(`Unknown application: ${id}`)
+    return pkg
+  }
+
+  return {
+    async prepare(jobId) {
+      const job = await jobService.get(jobId)
+      const id = `application-${job.id}`
+      const existing = packages.get(id)
+      if (existing?.sendState === 'sent') return structuredClone(existing)
+      const profile = await profileService.load()
+      const selected = profile.resumeFactIds.map((factId) => profile.facts.find((fact) => fact.id === factId))
+      const usedFacts = selected.filter((fact): fact is ProfileFact => Boolean(fact && fact.status === 'confirmed' && fact.value.trim() && fact.provenance.trim()))
+      const blocked = selected.map((fact, index) => ({ fact, factId: profile.resumeFactIds[index] }))
+        .filter(({ fact }) => !fact || fact.status !== 'confirmed' || !fact.value.trim() || !fact.provenance.trim())
+      const factLines = usedFacts.map((fact) => fact.value)
+      const factsText = factLines.join('\n')
+      const baseContent = factsText
+      const resumeContent = [job.title, factsText].filter(Boolean).join('\n')
+      const usedFactIds = usedFacts.map((fact) => fact.id)
+      const documents: GeneratedDocument[] = [
+        { kind: 'resume', title: 'Адаптированное резюме', content: resumeContent, baseContent, usedFactIds },
+        { kind: 'letter', title: 'Сопроводительное письмо', content: `Отклик на позицию ${job.title} в ${job.company}.\n${factsText}\nГотов(а) обсудить мой опыт.`, usedFactIds },
+        { kind: 'explanation', title: 'Объяснение соответствия', content: factLines.length ? `Подтверждённые факты для ${job.title}: ${factLines.join(', ')}.` : 'Подтверждённых фактов для сопоставления пока нет.', usedFactIds },
+      ]
+      const pkg: ApplicationPackage = {
+        id, jobId: job.id, documents, usedFacts,
+        warnings: job.gaps.map((message, index) => ({ id: `gap-${index}`, message })),
+        blockers: blocked.map(({ fact, factId }) => ({ kind: 'fact', factId, message: `Подтвердите выбранный факт: ${fact?.value || factId}` })),
+        sendState: 'draft',
+      }
+      if (existing && JSON.stringify({ ...existing, sendState: 'draft' }) === JSON.stringify(pkg)) return structuredClone(existing)
+      packages.set(id, pkg)
+      return structuredClone(pkg)
+    },
+    async confirmContent(id) {
+      const pkg = findPackage(id)
+      if (pkg.sendState === 'draft') pkg.sendState = 'content_confirmed'
+      return structuredClone(pkg)
+    },
+    async send(id, idempotencyKey) {
+      if (!idempotencyKey.trim()) throw new Error('Idempotency key is required')
+      const pkg = findPackage(id)
+      const resultKey = `${id}\u0000${idempotencyKey}`
+      const previous = results.get(resultKey)
+      if (previous) return structuredClone(previous)
+      if (pkg.sendState === 'sent') throw new Error('Application already sent')
+      const currentProfile = await profileService.load()
+      const factsStillConfirmed = pkg.usedFacts.every((fact) => {
+        const current = currentProfile.facts.find((item) => item.id === fact.id)
+        return current?.status === 'confirmed' && current.value === fact.value && current.provenance === fact.provenance
+      })
+      if (!factsStillConfirmed || !canSendApplication(pkg)) throw new Error('Application send is blocked')
+      const result: SendResult = { applicationId: id, jobId: pkg.jobId, status: 'sent', receiptId: `fixture-${id}` }
+      results.set(resultKey, result)
+      pkg.sendState = 'sent'
+      return structuredClone(result)
+    },
+  }
+}
+
+export const fixtureApplicationService = createFixtureApplicationService(fixtureProfileService, fixtureJobService)

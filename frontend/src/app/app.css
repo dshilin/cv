@@ -37,6 +37,8 @@ main h1 { margin: 0; }
 .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
 .profile-card { padding: 20px; background: white; border: 1px solid #e4e7ec; border-radius: 10px; }
 .profile-card h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.application-review { display: grid; gap: 16px; }
+.application-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 0; }
 .section-status { color: #475467; }
 .fact-list { list-style: none; padding: 0; }
 .fact-list li { padding-top: 12px; border-top: 1px solid #e4e7ec; overflow-wrap: anywhere; }
