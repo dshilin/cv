@@ -11,6 +11,8 @@ export function JobDetailsPage({ jobService = fixtureJobService }: { jobService?
   const [error, setError] = useState(false)
   useEffect(() => {
     let current = true
+    setJob(null)
+    setError(false)
     if (id) jobService.get(id).then((result) => { if (current) setJob(result) })
       .catch(() => { if (current) setError(true) })
     else setError(true)

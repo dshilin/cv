@@ -1,9 +1,9 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { Link, MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AppRoutes } from '../../app/router'
 import { createFixtureJobService } from '../../services/fixtures'
-import type { JobDetails } from '../../services/contracts'
+import type { JobDetails, JobService } from '../../services/contracts'
 
 const jobs: JobDetails[] = [
   {
@@ -67,5 +67,41 @@ describe('JobsPage', () => {
     renderJobs('/jobs/absent')
     expect(await screen.findByRole('heading', { name: 'Вакансия не найдена' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Подготовить отклик' })).not.toBeInTheDocument()
+  })
+
+  it('clears the previous vacancy and prepare link while another vacancy loads', async () => {
+    const fixture = createFixtureJobService(jobs)
+    let completeSecond!: (job: JobDetails) => void
+    const second = new Promise<JobDetails>((resolve) => { completeSecond = resolve })
+    const service: JobService = { ...fixture, get: (id) => id === 'job-2' ? second : fixture.get(id) }
+    render(<MemoryRouter initialEntries={['/jobs/job-1']}>
+      <AppRoutes jobService={service} />
+      <Link to="/jobs/job-2">Следующая вакансия</Link>
+    </MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: 'Frontend Developer' })).toBeVisible()
+    fireEvent.click(screen.getByRole('link', { name: 'Следующая вакансия' }))
+    expect(screen.queryByRole('heading', { name: 'Frontend Developer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Подготовить отклик' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Загружаем вакансию')
+    completeSecond(jobs[1])
+    expect(await screen.findByRole('heading', { name: 'Product Designer' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Подготовить отклик' })).toHaveAttribute('href', '/applications?jobId=job-2')
+  })
+
+  it('clears a missing-vacancy error when a valid vacancy starts loading', async () => {
+    const fixture = createFixtureJobService(jobs)
+    let completeValid!: (job: JobDetails) => void
+    const valid = new Promise<JobDetails>((resolve) => { completeValid = resolve })
+    const service: JobService = { ...fixture, get: (id) => id === 'job-1' ? valid : fixture.get(id) }
+    render(<MemoryRouter initialEntries={['/jobs/absent']}>
+      <AppRoutes jobService={service} />
+      <Link to="/jobs/job-1">Открыть существующую</Link>
+    </MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: 'Вакансия не найдена' })).toBeVisible()
+    fireEvent.click(screen.getByRole('link', { name: 'Открыть существующую' }))
+    expect(screen.queryByRole('heading', { name: 'Вакансия не найдена' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Загружаем вакансию')
+    completeValid(jobs[0])
+    expect(await screen.findByRole('heading', { name: 'Frontend Developer' })).toBeVisible()
   })
 })
