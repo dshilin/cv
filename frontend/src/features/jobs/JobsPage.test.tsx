@@ -1,5 +1,6 @@
+import { Profiler } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { Link, MemoryRouter } from 'react-router-dom'
+import { Link, MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AppRoutes } from '../../app/router'
 import { createFixtureJobService } from '../../services/fixtures'
@@ -24,6 +25,17 @@ const jobs: JobDetails[] = [
 
 function renderJobs(path: string) {
   render(<MemoryRouter initialEntries={[path]}><AppRoutes jobService={createFixtureJobService(jobs)} /></MemoryRouter>)
+}
+
+type CommitSnapshot = { path: string; text: string; prepareHref: string | null }
+
+function CommitRecorder({ jobService, record }: { jobService: JobService; record: (snapshot: CommitSnapshot) => void }) {
+  const location = useLocation()
+  return <Profiler id="job-route" onRender={() => record({
+    path: location.pathname,
+    text: document.querySelector('#content')?.textContent ?? '',
+    prepareHref: document.querySelector('#content a[href^="/applications?"]')?.getAttribute('href') ?? null,
+  })}><AppRoutes jobService={jobService} /></Profiler>
 }
 
 afterEach(cleanup)
@@ -103,5 +115,37 @@ describe('JobsPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Загружаем вакансию')
     completeValid(jobs[0])
     expect(await screen.findByRole('heading', { name: 'Frontend Developer' })).toBeVisible()
+  })
+
+  it('never commits a previous vacancy or prepare link for a new route id', async () => {
+    const fixture = createFixtureJobService(jobs)
+    const pending = new Promise<JobDetails>(() => {})
+    const service: JobService = { ...fixture, get: (id) => id === 'job-2' ? pending : fixture.get(id) }
+    const commits: CommitSnapshot[] = []
+    render(<MemoryRouter initialEntries={['/jobs/job-1']}>
+      <CommitRecorder jobService={service} record={(snapshot) => commits.push(snapshot)} />
+      <Link to="/jobs/job-2">Следующая вакансия</Link>
+    </MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: 'Frontend Developer' })).toBeVisible()
+    fireEvent.click(screen.getByRole('link', { name: 'Следующая вакансия' }))
+    const firstNewRouteCommit = commits.find(({ path }) => path === '/jobs/job-2')
+    expect(firstNewRouteCommit?.text).not.toContain('Frontend Developer')
+    expect(firstNewRouteCommit?.prepareHref).toBeNull()
+  })
+
+  it('never commits the previous missing-vacancy error for a valid route id', async () => {
+    const fixture = createFixtureJobService(jobs)
+    const pending = new Promise<JobDetails>(() => {})
+    const service: JobService = { ...fixture, get: (id) => id === 'job-1' ? pending : fixture.get(id) }
+    const commits: CommitSnapshot[] = []
+    render(<MemoryRouter initialEntries={['/jobs/absent']}>
+      <CommitRecorder jobService={service} record={(snapshot) => commits.push(snapshot)} />
+      <Link to="/jobs/job-1">Открыть существующую</Link>
+    </MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: 'Вакансия не найдена' })).toBeVisible()
+    fireEvent.click(screen.getByRole('link', { name: 'Открыть существующую' }))
+    const firstNewRouteCommit = commits.find(({ path }) => path === '/jobs/job-1')
+    expect(firstNewRouteCommit?.text).not.toContain('Вакансия не найдена')
+    expect(firstNewRouteCommit?.text).toContain('Загружаем вакансию')
   })
 })

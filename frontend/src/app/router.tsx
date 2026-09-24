@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes, useOutletContext } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useOutletContext, useParams } from 'react-router-dom'
 import { AppShell } from './AppShell'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { SourcesPage } from '../features/sources/SourcesPage'
@@ -24,6 +24,11 @@ function ReadySearchRoute() {
   return <SearchProfilesPage />
 }
 
+function JobDetailsRoute({ jobService }: { jobService?: JobService }) {
+  const { id } = useParams()
+  return <JobDetailsPage key={id} jobService={jobService} />
+}
+
 export function AppRoutes({ profileService, jobService }: { profileService?: ProfileService; jobService?: JobService } = {}) {
   return (
     <Routes>
@@ -33,7 +38,7 @@ export function AppRoutes({ profileService, jobService }: { profileService?: Pro
         <Route path="/sources" element={<SourcesPage />} />
         <Route path="/search" element={<ReadySearchRoute />} />
         <Route path="/jobs" element={<JobsPage jobService={jobService} />} />
-        <Route path="/jobs/:id" element={<JobDetailsPage jobService={jobService} />} />
+        <Route path="/jobs/:id" element={<JobDetailsRoute jobService={jobService} />} />
         <Route path="/applications" element={<PlaceholderPage title="Отклики" />} />
         <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />
         <Route path="*" element={<Navigate to="/profile" replace />} />
