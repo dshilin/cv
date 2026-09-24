@@ -7,17 +7,18 @@ const readyProfile = (): ExperienceProfile => ({
     basics: 'confirmed',
     employment: 'not_applicable',
     projects: 'not_applicable',
-    skills: 'not_applicable',
+    skills: 'confirmed',
     education: 'not_applicable',
     languages: 'not_applicable',
     additional: 'needs_input',
   },
   facts: [
     { id: 'name', section: 'basics', status: 'confirmed', value: 'Example Person', provenance: 'user:name' },
+    { id: 'skill', section: 'skills', status: 'confirmed', value: 'TypeScript', provenance: 'user:skill' },
   ],
   conflicts: [],
   questions: [],
-  resumeFactIds: ['name'],
+  resumeFactIds: ['name', 'skill'],
 })
 
 describe('evaluateProfileReadiness', () => {
@@ -44,6 +45,25 @@ describe('evaluateProfileReadiness', () => {
     expect(evaluateProfileReadiness(readyProfile())).toEqual({ ready: true, blockers: [] })
   })
 
+  it('blocks a name-only profile even when the name is traceable', () => {
+    const profile = readyProfile()
+    profile.sections.skills = 'not_applicable'
+    profile.facts = profile.facts.filter((fact) => fact.id === 'name')
+    profile.resumeFactIds = ['name']
+
+    const result = evaluateProfileReadiness(profile)
+
+    expect(result.ready).toBe(false)
+    expect(result.blockers).toContainEqual({ code: 'not_reproducible' })
+  })
+
+  it('blocks a draft that omits its confirmed résumé content', () => {
+    const profile = readyProfile()
+    profile.resumeFactIds = ['name']
+
+    expect(evaluateProfileReadiness(profile).blockers).toContainEqual({ code: 'not_reproducible' })
+  })
+
   it('blocks unresolved conflicts and mandatory questions', () => {
     const profile = readyProfile()
     profile.conflicts = [{ id: 'dates', resolved: false }]
@@ -58,9 +78,9 @@ describe('evaluateProfileReadiness', () => {
 
   it('requires provenance for every saved fact', () => {
     const profile = readyProfile()
-    profile.facts.push({ id: 'skill', section: 'skills', status: 'needs_review', value: 'TypeScript', provenance: ' ' })
+    profile.facts.push({ id: 'project', section: 'projects', status: 'needs_review', value: 'Example project', provenance: ' ' })
 
-    expect(evaluateProfileReadiness(profile).blockers).toContainEqual({ code: 'missing_provenance', id: 'skill' })
+    expect(evaluateProfileReadiness(profile).blockers).toContainEqual({ code: 'missing_provenance', id: 'project' })
   })
 
   it('does not require optional additional data', () => {
@@ -72,14 +92,14 @@ describe('evaluateProfileReadiness', () => {
 
   it('requires a draft traceable to confirmed facts', () => {
     const profile = readyProfile()
-    profile.resumeFactIds = ['unknown']
+    profile.resumeFactIds = ['name', 'unknown']
 
     expect(evaluateProfileReadiness(profile).blockers).toContainEqual({ code: 'not_reproducible' })
   })
 
   it('cannot reproduce a draft from an empty fact', () => {
     const profile = readyProfile()
-    profile.facts[0].value = '  '
+    profile.facts[1].value = '  '
 
     expect(evaluateProfileReadiness(profile).blockers).toContainEqual({ code: 'not_reproducible' })
   })

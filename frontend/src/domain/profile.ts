@@ -31,6 +31,6 @@ export type ExperienceProfile = {
   facts: ProfileFact[]
   conflicts: ProfileIssue[]
   questions: ProfileQuestion[]
-  /** Fact IDs used to assemble a checkable draft without new claims. */
+  /** Source facts selected for the draft; readiness also requires résumé content. */
   resumeFactIds: string[]
 }

@@ -11,6 +11,10 @@ const requiredSections: ProfileSection[] = [
   'basics', 'employment', 'projects', 'skills', 'education', 'languages',
 ]
 
+const resumeContentSections: ProfileSection[] = [
+  'employment', 'projects', 'skills', 'education', 'languages',
+]
+
 const validStatuses: FactStatus[] = [
   'needs_input', 'needs_review', 'confirmed', 'conflict', 'not_applicable', 'rejected',
 ]
@@ -40,11 +44,14 @@ export function evaluateProfileReadiness(profile: ExperienceProfile): ProfileRea
     }
   }
 
-  const reproducible = profile.resumeFactIds.length > 0 && profile.resumeFactIds.every((id) =>
-    profile.facts.some((fact) =>
-      fact.id === id && fact.status === 'confirmed' && fact.value.trim() && fact.provenance.trim(),
-    ),
+  const draftFacts = profile.resumeFactIds.map((id) => profile.facts.find((fact) => fact.id === id))
+  const validDraftFacts = draftFacts.length > 0 && draftFacts.every((fact) =>
+    fact && fact.status === 'confirmed' && fact.value.trim() && fact.provenance.trim(),
   )
+  const hasResumeContent = draftFacts.some((fact) =>
+    fact && resumeContentSections.includes(fact.section) && profile.sections[fact.section] === 'confirmed',
+  )
+  const reproducible = validDraftFacts && hasResumeContent
   if (!reproducible) blockers.push({ code: 'not_reproducible' })
 
   return { ready: blockers.length === 0, blockers }
