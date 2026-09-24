@@ -3,9 +3,11 @@ import { AppShell } from './AppShell'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { SourcesPage } from '../features/sources/SourcesPage'
 import { SearchProfilesPage } from '../features/search/SearchProfilesPage'
+import { JobsPage } from '../features/jobs/JobsPage'
+import { JobDetailsPage } from '../features/jobs/JobDetailsPage'
 import { evaluateProfileReadiness } from '../domain/readiness'
 import type { ExperienceProfile } from '../domain/profile'
-import type { ProfileService } from '../services/contracts'
+import type { JobService, ProfileService } from '../services/contracts'
 
 function PlaceholderPage({ title }: { title: string }) {
   return <h1>{title}</h1>
@@ -22,7 +24,7 @@ function ReadySearchRoute() {
   return <SearchProfilesPage />
 }
 
-export function AppRoutes({ profileService }: { profileService?: ProfileService } = {}) {
+export function AppRoutes({ profileService, jobService }: { profileService?: ProfileService; jobService?: JobService } = {}) {
   return (
     <Routes>
       <Route element={<AppShell profileService={profileService} />}>
@@ -30,7 +32,8 @@ export function AppRoutes({ profileService }: { profileService?: ProfileService 
         <Route path="/profile/readiness" element={<PlaceholderPage title="Готовность" />} />
         <Route path="/sources" element={<SourcesPage />} />
         <Route path="/search" element={<ReadySearchRoute />} />
-        <Route path="/jobs" element={<PlaceholderPage title="Вакансии" />} />
+        <Route path="/jobs" element={<JobsPage jobService={jobService} />} />
+        <Route path="/jobs/:id" element={<JobDetailsPage jobService={jobService} />} />
         <Route path="/applications" element={<PlaceholderPage title="Отклики" />} />
         <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />
         <Route path="*" element={<Navigate to="/profile" replace />} />

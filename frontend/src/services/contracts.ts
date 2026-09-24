@@ -31,3 +31,33 @@ export interface SearchService {
   save(profile: SearchProfile): Promise<SearchProfile[]>
   activate(id: string): Promise<SearchProfile[]>
 }
+
+export type JobStatus = 'new' | 'suitable' | 'needs_review' | 'saved' | 'rejected' | 'preparing' | 'sent'
+
+export interface JobSummary {
+  id: string
+  title: string
+  company: string
+  source: string
+  publishedAt: string
+  score: number
+  status: JobStatus
+  confirmedMatches: ConfirmedMatch[]
+  gaps: string[]
+}
+
+export interface ConfirmedMatch {
+  requirement: string
+  fact: string
+  factId: string
+}
+
+export interface JobDetails extends JobSummary {
+  description: string
+  requiredSkills: string[]
+}
+
+export interface JobService {
+  list(): Promise<JobSummary[]>
+  get(id: string): Promise<JobDetails>
+}

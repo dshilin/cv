@@ -1,6 +1,6 @@
 import type { ExperienceProfile, ProfileFact, ProfileSection } from '../domain/profile'
 import { isSourceAvailable, validateSearchActivation, type SearchProfile, type SourceConnection } from '../domain/search'
-import type { ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SourceService, UpdateFactInput } from './contracts'
+import type { JobDetails, JobService, ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SourceService, UpdateFactInput } from './contracts'
 
 const initialProfile: ExperienceProfile = {
   sections: {
@@ -151,3 +151,37 @@ export function createFixtureSearchService(sourceService: SourceService, seed: S
 
 export const fixtureSourceService = createFixtureSourceService()
 export const fixtureSearchService = createFixtureSearchService(fixtureSourceService)
+
+const initialJobs: JobDetails[] = [
+  {
+    id: 'example-job-1', title: 'Frontend Developer', company: 'Example Studio',
+    source: 'Example Board', publishedAt: '2026-09-23', score: 82, status: 'needs_review',
+    description: 'Разработка доступных интерфейсов для веб-приложения. Требуются TypeScript и опыт accessibility.',
+    requiredSkills: ['TypeScript', 'Accessibility'],
+    confirmedMatches: [],
+    gaps: ['Навык TypeScript ожидает подтверждения в профиле', 'Опыт accessibility не подтверждён в профиле'],
+  },
+  {
+    id: 'example-job-2', title: 'Product Designer', company: 'Sample Company',
+    source: 'Sample Feed', publishedAt: '2026-09-22', score: 54, status: 'new',
+    description: 'Исследование пользовательских сценариев и дизайн интерфейсов.',
+    requiredSkills: ['Исследования пользователей'], confirmedMatches: [],
+    gaps: ['Опыт исследований пользователей не подтверждён в профиле'],
+  },
+]
+
+export function createFixtureJobService(seed: JobDetails[] = initialJobs): JobService {
+  const jobs = structuredClone(seed)
+  return {
+    async list() {
+      return structuredClone(jobs.map(({ description: _description, requiredSkills: _requiredSkills, ...summary }) => summary))
+    },
+    async get(id) {
+      const job = jobs.find((item) => item.id === id)
+      if (!job) throw new Error(`Unknown job: ${id}`)
+      return structuredClone(job)
+    },
+  }
+}
+
+export const fixtureJobService = createFixtureJobService()
