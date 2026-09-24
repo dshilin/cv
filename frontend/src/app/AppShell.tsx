@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import type { ExperienceProfile } from '../domain/profile'
+import { evaluateProfileReadiness } from '../domain/readiness'
+import { fixtureProfileService } from '../services/fixtures'
 
 const navigation = [
   { to: '/profile', label: 'Профиль', end: true },
@@ -11,6 +15,11 @@ const navigation = [
 ]
 
 export function AppShell() {
+  const [profile, setProfile] = useState<ExperienceProfile | null>(null)
+  useEffect(() => {
+    void fixtureProfileService.load().then(setProfile)
+  }, [])
+  const profileReady = profile ? evaluateProfileReadiness(profile).ready : false
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -25,12 +34,12 @@ export function AppShell() {
       </aside>
       <div className="workspace">
         <header className="status-bar" aria-label="Состояние приложения">
-          <span>Профиль не готов</span>
+          <span>{profileReady ? 'Профиль готов' : 'Профиль не готов'}</span>
           <span>Поиск не настроен</span>
           <span>Действий не ожидается</span>
         </header>
         <main id="content">
-          <Outlet />
+          <Outlet context={{ profileService: fixtureProfileService, onProfileChange: setProfile }} />
         </main>
       </div>
     </div>

@@ -30,6 +30,21 @@ main { padding: 32px; }
 
 main h1 { margin: 0; }
 
+.profile-page { max-width: 1080px; }
+.readiness-summary { margin: 24px 0; padding: 20px; background: #eaf3f8; border-radius: 10px; }
+.readiness-summary h2 { margin-top: 0; }
+.readiness-summary li + li { margin-top: 8px; }
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+.profile-card { padding: 20px; background: white; border: 1px solid #e4e7ec; border-radius: 10px; }
+.profile-card h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.section-status { color: #475467; }
+.fact-list { list-style: none; padding: 0; }
+.fact-list li { padding-top: 12px; border-top: 1px solid #e4e7ec; overflow-wrap: anywhere; }
+.fact-list p { margin: 8px 0; }
+.fact-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.fact-actions button, .fact-list button { padding: 7px 10px; cursor: pointer; }
+.fact-list input { max-width: 100%; }
+
 @media (max-width: 700px) {
   .app-shell { display: block; }
   .sidebar { width: 100%; }
