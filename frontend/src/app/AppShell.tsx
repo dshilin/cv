@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import type { ExperienceProfile } from '../domain/profile'
 import { evaluateProfileReadiness } from '../domain/readiness'
+import type { ProfileService } from '../services/contracts'
 import { fixtureProfileService } from '../services/fixtures'
 
 const navigation = [
@@ -14,11 +15,15 @@ const navigation = [
   { to: '/settings', label: 'Настройки' },
 ]
 
-export function AppShell() {
+export function AppShell({ profileService = fixtureProfileService }: { profileService?: ProfileService }) {
   const [profile, setProfile] = useState<ExperienceProfile | null>(null)
+  const [profileLoaded, setProfileLoaded] = useState(false)
   useEffect(() => {
-    void fixtureProfileService.load().then(setProfile)
-  }, [])
+    let current = true
+    profileService.load().then((loaded) => { if (current) { setProfile(loaded); setProfileLoaded(true) } })
+      .catch(() => { if (current) setProfileLoaded(true) })
+    return () => { current = false }
+  }, [profileService])
   const profileReady = profile ? evaluateProfileReadiness(profile).ready : false
   return (
     <div className="app-shell">
@@ -39,7 +44,7 @@ export function AppShell() {
           <span>Действий не ожидается</span>
         </header>
         <main id="content">
-          <Outlet context={{ profileService: fixtureProfileService, onProfileChange: setProfile }} />
+          <Outlet context={{ profileService, onProfileChange: setProfile, profile, profileLoaded }} />
         </main>
       </div>
     </div>

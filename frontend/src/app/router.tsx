@@ -1,19 +1,35 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useOutletContext } from 'react-router-dom'
 import { AppShell } from './AppShell'
 import { ProfilePage } from '../features/profile/ProfilePage'
+import { SourcesPage } from '../features/sources/SourcesPage'
+import { SearchProfilesPage } from '../features/search/SearchProfilesPage'
+import { evaluateProfileReadiness } from '../domain/readiness'
+import type { ExperienceProfile } from '../domain/profile'
+import type { ProfileService } from '../services/contracts'
 
 function PlaceholderPage({ title }: { title: string }) {
   return <h1>{title}</h1>
 }
 
-export function AppRoutes() {
+function ReadySearchRoute() {
+  const { profile, profileLoaded } = useOutletContext<{ profile: ExperienceProfile | null; profileLoaded: boolean }>()
+  if (!profileLoaded) return <p role="status">Проверяем готовность профиля…</p>
+  if (!profile || !evaluateProfileReadiness(profile).ready) return <section>
+    <h1>Поиск пока недоступен</h1>
+    <p>Сначала завершите профиль и устраните блокеры готовности.</p>
+    <Link to="/profile">Открыть профиль</Link>
+  </section>
+  return <SearchProfilesPage />
+}
+
+export function AppRoutes({ profileService }: { profileService?: ProfileService } = {}) {
   return (
     <Routes>
-      <Route element={<AppShell />}>
+      <Route element={<AppShell profileService={profileService} />}>
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/readiness" element={<PlaceholderPage title="Готовность" />} />
-        <Route path="/sources" element={<PlaceholderPage title="Сервисы" />} />
-        <Route path="/search" element={<PlaceholderPage title="Поиск" />} />
+        <Route path="/sources" element={<SourcesPage />} />
+        <Route path="/search" element={<ReadySearchRoute />} />
         <Route path="/jobs" element={<PlaceholderPage title="Вакансии" />} />
         <Route path="/applications" element={<PlaceholderPage title="Отклики" />} />
         <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />

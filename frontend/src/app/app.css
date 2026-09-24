@@ -45,6 +45,14 @@ main h1 { margin: 0; }
 .fact-actions button, .fact-list button { padding: 7px 10px; cursor: pointer; }
 .fact-list input { max-width: 100%; }
 
+.profile-card form, form.profile-card { display: grid; gap: 12px; }
+form.profile-card > label, form.profile-card details label { display: grid; gap: 4px; margin: 8px 0; }
+form.profile-card fieldset { display: flex; flex-wrap: wrap; gap: 12px; border: 1px solid #e4e7ec; }
+form.profile-card fieldset label { display: inline-flex; align-items: center; gap: 6px; }
+form.profile-card input:not([type='checkbox']), form.profile-card select { width: 100%; max-width: 480px; padding: 8px; }
+form.profile-card details { padding: 12px; border: 1px solid #e4e7ec; border-radius: 6px; }
+form.profile-card button, .profile-card > button { margin: 8px 8px 0 0; padding: 8px 12px; cursor: pointer; }
+
 @media (max-width: 700px) {
   .app-shell { display: block; }
   .sidebar { width: 100%; }
