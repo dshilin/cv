@@ -19,16 +19,17 @@ type Props = {
   facts: ProfileFact[]
   onConfirm: (id: string) => Promise<void>
   onReject: (id: string) => Promise<void>
+  onRestore: (id: string) => Promise<void>
   onUpdate: (id: string, value: string, provenance: string) => Promise<boolean>
 }
 
-export function ProfileSectionCard({ section, status, facts, onConfirm, onReject, onUpdate }: Props) {
+export function ProfileSectionCard({ section, status, facts, onConfirm, onReject, onRestore, onUpdate }: Props) {
   const label = sectionLabels[section]
   return (
     <section className="profile-card" id={`section-${section}`} aria-label={label}>
       <h2>{label}</h2>
       <p className="section-status">{statusLabels[status]}</p>
-      <FactReviewList facts={facts} onConfirm={onConfirm} onReject={onReject} onUpdate={onUpdate} />
+      <FactReviewList facts={facts} onConfirm={onConfirm} onReject={onReject} onRestore={onRestore} onUpdate={onUpdate} />
     </section>
   )
 }

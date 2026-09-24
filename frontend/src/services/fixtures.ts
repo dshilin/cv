@@ -1,5 +1,5 @@
 import type { ExperienceProfile, ProfileFact, ProfileSection } from '../domain/profile'
-import type { ProfileService, ReviewFactInput, UpdateFactInput } from './contracts'
+import type { ProfileService, ResolveIssueInput, ReviewFactInput, UpdateFactInput } from './contracts'
 
 const initialProfile: ExperienceProfile = {
   sections: {
@@ -54,6 +54,12 @@ export function createFixtureProfileService(seed: ExperienceProfile = initialPro
       }))
     },
     async reviewFact({ id, decision }: ReviewFactInput) {
+      if (decision === 'restore') {
+        changeFact(id, (fact) => ({ ...fact, status: 'needs_review' }))
+        profile.sections[profile.facts.find((fact) => fact.id === id)!.section] = 'needs_review'
+        if (!profile.resumeFactIds.includes(id)) profile.resumeFactIds.push(id)
+        return structuredClone(profile)
+      }
       const next = changeFact(id, (fact) => ({
         ...fact,
         status: decision === 'confirm' ? 'confirmed' : 'rejected',
@@ -63,6 +69,21 @@ export function createFixtureProfileService(seed: ExperienceProfile = initialPro
         return structuredClone(profile)
       }
       return next
+    },
+    async resolveIssue({ kind, id, resolution }: ResolveIssueInput) {
+      if (!resolution.trim()) throw new Error('Issue resolution is required')
+      const next = structuredClone(profile)
+      if (kind === 'conflict') {
+        const issue = next.conflicts.find((conflict) => conflict.id === id)
+        if (!issue) throw new Error(`Unknown conflict: ${id}`)
+        issue.resolved = true
+      } else {
+        const question = next.questions.find((item) => item.id === id)
+        if (!question) throw new Error(`Unknown question: ${id}`)
+        question.resolved = true
+      }
+      profile = next
+      return structuredClone(profile)
     },
   }
 }

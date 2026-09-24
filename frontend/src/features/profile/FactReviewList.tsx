@@ -5,6 +5,7 @@ type Props = {
   facts: ProfileFact[]
   onConfirm: (id: string) => Promise<void>
   onReject: (id: string) => Promise<void>
+  onRestore: (id: string) => Promise<void>
   onUpdate: (id: string, value: string, provenance: string) => Promise<boolean>
 }
 
@@ -14,7 +15,7 @@ const statusLabels = {
   not_applicable: 'Не применимо', rejected: 'Отклонено',
 }
 
-export function FactReviewList({ facts, onConfirm, onReject, onUpdate }: Props) {
+export function FactReviewList({ facts, onConfirm, onReject, onRestore, onUpdate }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [draftSource, setDraftSource] = useState('')
@@ -40,6 +41,9 @@ export function FactReviewList({ facts, onConfirm, onReject, onUpdate }: Props) 
             <div className="fact-actions">
               {fact.status !== 'confirmed' && fact.status !== 'rejected' && (
                 <button type="button" onClick={() => void onConfirm(fact.id)}>Подтвердить</button>
+              )}
+              {fact.status === 'rejected' && (
+                <button type="button" onClick={() => void onRestore(fact.id)}>Восстановить</button>
               )}
               {fact.status !== 'rejected' && (
                 <button type="button" onClick={() => {

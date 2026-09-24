@@ -61,6 +61,10 @@ export function ProfilePage({ service, onProfileChange }: Props) {
     }
   }
 
+  async function resolveIssue(kind: 'conflict' | 'question', id: string, resolution: string) {
+    return run(() => profileService.resolveIssue({ kind, id, resolution }))
+  }
+
   if (!profile) return <p role="status">{error || 'Загрузка профиля…'}</p>
   const readiness = evaluateProfileReadiness(profile)
 
@@ -90,10 +94,32 @@ export function ProfilePage({ service, onProfileChange }: Props) {
           <h2>Противоречия и вопросы</h2>
           <ul>
             {profile.conflicts.filter(({ resolved }) => !resolved).map(({ id }) => (
-              <li key={`conflict-${id}`} id={`conflict-${id}`}>Противоречие: {id}</li>
+              <li key={`conflict-${id}`} id={`conflict-${id}`} aria-label={`Противоречие: ${id}`}>
+                <p>Противоречие: {id}</p>
+                <form onSubmit={async (event) => {
+                  event.preventDefault()
+                  const form = event.currentTarget
+                  const resolution = new FormData(form).get('resolution')?.toString() ?? ''
+                  if (await resolveIssue('conflict', id, resolution)) form.reset()
+                }}>
+                  <label>Решение противоречия <input name="resolution" required /></label>
+                  <button type="submit">Сохранить решение</button>
+                </form>
+              </li>
             ))}
             {profile.questions.filter(({ resolved }) => !resolved).map(({ id }) => (
-              <li key={`question-${id}`} id={`question-${id}`}>Обязательный вопрос: {id}</li>
+              <li key={`question-${id}`} id={`question-${id}`} aria-label={`Обязательный вопрос: ${id}`}>
+                <p>Обязательный вопрос: {id}</p>
+                <form onSubmit={async (event) => {
+                  event.preventDefault()
+                  const form = event.currentTarget
+                  const resolution = new FormData(form).get('answer')?.toString() ?? ''
+                  if (await resolveIssue('question', id, resolution)) form.reset()
+                }}>
+                  <label>Ответ на вопрос <input name="answer" required /></label>
+                  <button type="submit">Сохранить ответ</button>
+                </form>
+              </li>
             ))}
           </ul>
         </section>
@@ -107,6 +133,7 @@ export function ProfilePage({ service, onProfileChange }: Props) {
             facts={profile.facts.filter((fact) => fact.section === section)}
             onConfirm={async (id) => { await run(() => profileService.reviewFact({ id, decision: 'confirm' })) }}
             onReject={async (id) => { await run(() => profileService.reviewFact({ id, decision: 'reject' })) }}
+            onRestore={async (id) => { await run(() => profileService.reviewFact({ id, decision: 'restore' })) }}
             onUpdate={(id, value, provenance) => run(() => profileService.updateFact({ id, value, provenance }))}
           />
         ))}

@@ -52,6 +52,28 @@ describe('ProfilePage', () => {
     expect(document.querySelector(questionLink.getAttribute('href')!)).toBeVisible()
   })
 
+  it('lets the user answer mandatory questions and resolve conflicts from blocker details', async () => {
+    const profile = blockedProfile()
+    profile.sections.skills = 'confirmed'
+    profile.facts[1].status = 'confirmed'
+    profile.conflicts = [{ id: 'dates', resolved: false }]
+    profile.questions = [{ id: 'employer', mandatory: true, resolved: false }]
+    const service = renderProfile(profile)
+
+    const question = await screen.findByRole('listitem', { name: 'Обязательный вопрос: employer' })
+    const conflict = screen.getByRole('listitem', { name: 'Противоречие: dates' })
+    fireEvent.change(within(question).getByRole('textbox', { name: 'Ответ на вопрос' }), { target: { value: 'Компания подтверждена' } })
+    fireEvent.click(within(question).getByRole('button', { name: 'Сохранить ответ' }))
+    fireEvent.change(within(conflict).getByRole('textbox', { name: 'Решение противоречия' }), { target: { value: 'Использовать даты из договора' } })
+    fireEvent.click(within(conflict).getByRole('button', { name: 'Сохранить решение' }))
+
+    expect((await service.load()).questions[0].resolved).toBe(true)
+    expect((await service.load()).conflicts[0].resolved).toBe(true)
+    expect(await screen.findByRole('link', { name: 'Настроить поиск' })).toBeVisible()
+    expect(screen.queryByRole('listitem', { name: 'Обязательный вопрос: employer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('listitem', { name: 'Противоречие: dates' })).not.toBeInTheDocument()
+  })
+
   it('offers confirm, edit, and reject actions for an extracted fact', async () => {
     renderProfile()
 
@@ -121,6 +143,21 @@ describe('ProfilePage', () => {
     expect(await within(fact).findByText('Статус: Отклонено')).toBeVisible()
     expect((await service.load()).facts.find(({ id }) => id === 'skill')?.status).toBe('rejected')
     expect(screen.queryByRole('link', { name: 'Настроить поиск' })).not.toBeInTheDocument()
+  })
+
+  it('offers recovery after rejecting the only skill fact', async () => {
+    const service = renderProfile()
+    const fact = await screen.findByRole('listitem', { name: 'TypeScript' })
+
+    fireEvent.click(within(fact).getByRole('button', { name: 'Отклонить' }))
+    expect(await within(fact).findByRole('button', { name: 'Восстановить' })).toBeVisible()
+
+    fireEvent.click(within(fact).getByRole('button', { name: 'Восстановить' }))
+
+    expect(await within(fact).findByText('Статус: Ожидает проверки')).toBeVisible()
+    expect(within(fact).getByRole('button', { name: 'Подтвердить' })).toBeVisible()
+    expect((await service.load()).resumeFactIds).toContain('skill')
+    expect((await service.load()).sections.skills).toBe('needs_review')
   })
 
   it('does not show the search CTA while the profile is blocked', async () => {
