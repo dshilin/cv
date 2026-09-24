@@ -1,5 +1,5 @@
 import type { ExperienceProfile, ProfileFact, ProfileSection } from '../domain/profile'
-import { validateSearchActivation, type SearchProfile, type SourceConnection } from '../domain/search'
+import { isSourceAvailable, validateSearchActivation, type SearchProfile, type SourceConnection } from '../domain/search'
 import type { ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SourceService, UpdateFactInput } from './contracts'
 
 const initialProfile: ExperienceProfile = {
@@ -94,39 +94,54 @@ export function createFixtureProfileService(seed: ExperienceProfile = initialPro
 export const fixtureProfileService = createFixtureProfileService()
 
 const initialConnections: SourceConnection[] = [
-  { id: 'example-board', status: 'disconnected', consent: 'missing' },
+  { id: 'example-board', status: 'disconnected', consent: 'missing', tokenStatus: 'absent' },
 ]
 
 export function createFixtureSourceService(seed: SourceConnection[] = initialConnections): SourceService {
   let connections = structuredClone(seed)
+  const listeners = new Set<(before: SourceConnection[], after: SourceConnection[]) => void>()
   const update = (id: string, change: (source: SourceConnection) => SourceConnection) => {
     if (!connections.some((source) => source.id === id)) throw new Error(`Unknown source: ${id}`)
+    const before = structuredClone(connections)
     connections = connections.map((source) => source.id === id ? change(source) : source)
+    for (const listener of listeners) listener(before, structuredClone(connections))
     return structuredClone(connections)
   }
   return {
     async list() { return structuredClone(connections) },
     // Local simulation only. Real source authorization requires a separate provider OAuth flow.
-    async connect(id) { return update(id, (source) => ({ ...source, status: 'connected', consent: 'granted' })) },
+    async connect(id) { return update(id, (source) => ({ ...source, status: 'connected', consent: 'granted', tokenStatus: 'valid' })) },
     async check(id) { return update(id, (source) => ({ ...source })) },
-    async disconnect(id) { return update(id, (source) => ({ ...source, status: 'disconnected', consent: 'revoked' })) },
+    async disconnect(id) { return update(id, (source) => ({ ...source, status: 'disconnected', consent: 'revoked', tokenStatus: 'absent' })) },
+    async revokeConsent(id) { return update(id, (source) => ({ ...source, consent: 'revoked' })) },
+    async requireReconnect(id) { return update(id, (source) => ({ ...source, status: 'reconnect_required', tokenStatus: 'expired' })) },
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
   }
 }
 
-export function createFixtureSearchService(seed: SearchProfile[] = []): SearchService {
+export function createFixtureSearchService(sourceService: SourceService, seed: SearchProfile[] = []): SearchService {
   let profiles = structuredClone(seed)
+  sourceService.subscribe((before, after) => {
+    const lost = before.filter((previous) => {
+      const current = after.find((source) => source.id === previous.id)
+      return isSourceAvailable(previous) && !isSourceAvailable(current)
+    }).map((source) => source.id)
+    if (lost.length) profiles = profiles.map((profile) =>
+      profile.active && profile.sources.some((id) => lost.includes(id)) ? { ...profile, active: false } : profile)
+  })
   return {
     async list() { return structuredClone(profiles) },
     async save(profile) {
-      const next = structuredClone(profile)
+      const next = { ...structuredClone(profile), active: false }
       const index = profiles.findIndex((item) => item.id === next.id)
       if (index < 0) profiles.push(next)
       else profiles[index] = next
       return structuredClone(profiles)
     },
-    async activate(id, connections) {
+    async activate(id) {
       const profile = profiles.find((item) => item.id === id)
       if (!profile) throw new Error(`Unknown search profile: ${id}`)
+      const connections = await sourceService.list()
       if (!validateSearchActivation(profile, connections).canActivate) throw new Error('Search activation is blocked')
       profiles = profiles.map((item) => item.id === id ? { ...item, active: true } : item)
       return structuredClone(profiles)
@@ -135,4 +150,4 @@ export function createFixtureSearchService(seed: SearchProfile[] = []): SearchSe
 }
 
 export const fixtureSourceService = createFixtureSourceService()
-export const fixtureSearchService = createFixtureSearchService()
+export const fixtureSearchService = createFixtureSearchService(fixtureSourceService)

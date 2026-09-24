@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { validateSearchActivation, type SearchProfile, type SourceConnection } from './search'
 
-const connected: SourceConnection = { id: 'board-a', status: 'connected', consent: 'granted' }
+const connected: SourceConnection = { id: 'board-a', status: 'connected', consent: 'granted', tokenStatus: 'valid' }
 const valid = (): SearchProfile => ({
   id: 'search-a', roles: ['Backend Developer'], sources: ['board-a'],
   scope: { regions: [], remote: true }, mode: 'recommendations', active: false,
@@ -23,7 +23,7 @@ describe('validateSearchActivation', () => {
 
   it('keeps a saved search profile when one source is disconnected', () => {
     const profile = { ...valid(), sources: ['board-a', 'board-b'] }
-    const result = validateSearchActivation(profile, [connected, { id: 'board-b', status: 'reconnect_required', consent: 'granted' }])
+    const result = validateSearchActivation(profile, [connected, { id: 'board-b', status: 'reconnect_required', consent: 'granted', tokenStatus: 'expired' }])
     expect(result).toEqual({ canActivate: true, blockers: [], availableSourceIds: ['board-a'] })
     expect(profile.sources).toEqual(['board-a', 'board-b'])
   })
@@ -36,6 +36,12 @@ describe('validateSearchActivation', () => {
 
   it('does not count a connected source without search consent', () => {
     const result = validateSearchActivation(valid(), [{ ...connected, consent: 'missing' }])
+    expect(result.canActivate).toBe(false)
+    expect(result.availableSourceIds).toEqual([])
+  })
+
+  it('does not count an expired token as an available source', () => {
+    const result = validateSearchActivation(valid(), [{ ...connected, tokenStatus: 'expired' }])
     expect(result.canActivate).toBe(false)
     expect(result.availableSourceIds).toEqual([])
   })

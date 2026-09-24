@@ -21,10 +21,13 @@ export interface SourceService {
   connect(id: string): Promise<SourceConnection[]>
   check(id: string): Promise<SourceConnection[]>
   disconnect(id: string): Promise<SourceConnection[]>
+  revokeConsent(id: string): Promise<SourceConnection[]>
+  requireReconnect(id: string): Promise<SourceConnection[]>
+  subscribe(listener: (before: SourceConnection[], after: SourceConnection[]) => void): () => void
 }
 
 export interface SearchService {
   list(): Promise<SearchProfile[]>
   save(profile: SearchProfile): Promise<SearchProfile[]>
-  activate(id: string, connections: SourceConnection[]): Promise<SearchProfile[]>
+  activate(id: string): Promise<SearchProfile[]>
 }

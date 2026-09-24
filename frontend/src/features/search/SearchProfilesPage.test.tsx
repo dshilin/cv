@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ExperienceProfile } from '../../domain/profile'
@@ -19,8 +19,8 @@ const readyProfile: ExperienceProfile = {
 }
 
 function renderSearch() {
-  const sources = createFixtureSourceService([{ id: 'example-board', status: 'connected', consent: 'granted' }])
-  const searches = createFixtureSearchService()
+  const sources = createFixtureSourceService([{ id: 'example-board', status: 'connected', consent: 'granted', tokenStatus: 'valid' }])
+  const searches = createFixtureSearchService(sources)
   render(<MemoryRouter><SearchProfilesPage sourceService={sources} searchService={searches} /></MemoryRouter>)
   return { sources, searches }
 }
@@ -29,8 +29,8 @@ afterEach(cleanup)
 
 describe('SearchProfilesPage', () => {
   it('adds another profile without replacing a previously saved one', async () => {
-    const sources = createFixtureSourceService([{ id: 'example-board', status: 'connected', consent: 'granted' }])
-    const searches = createFixtureSearchService([{
+    const sources = createFixtureSourceService([{ id: 'example-board', status: 'connected', consent: 'granted', tokenStatus: 'valid' }])
+    const searches = createFixtureSearchService(sources, [{
       id: 'search-1', roles: ['Designer'], sources: ['example-board'],
       scope: { regions: ['Москва'], remote: false }, mode: 'recommendations', active: false,
     }])
@@ -59,6 +59,27 @@ describe('SearchProfilesPage', () => {
     expect((await searches.list())[0].active).toBe(true)
   })
 
+  it('preserves all entered settings when saving fails so the user can retry', async () => {
+    const sources = createFixtureSourceService([{ id: 'example-board', status: 'connected', consent: 'granted', tokenStatus: 'valid' }])
+    const searches = createFixtureSearchService(sources)
+    const failing = { ...searches, async save() { throw new Error('Unavailable') } }
+    render(<MemoryRouter><SearchProfilesPage sourceService={sources} searchService={failing} /></MemoryRouter>)
+    await screen.findByRole('checkbox', { name: 'Example Board' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Должности и синонимы' }), { target: { value: 'Developer' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Ключевой запрос' }), { target: { value: 'TypeScript' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Example Board' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Удалённая работа' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Режим обработки' }), { target: { value: 'recommendations' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить профиль' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить поисковый профиль')
+    expect(screen.getByRole('textbox', { name: 'Должности и синонимы' })).toHaveValue('Developer')
+    expect(screen.getByRole('textbox', { name: 'Ключевой запрос' })).toHaveValue('TypeScript')
+    expect(screen.getByRole('checkbox', { name: 'Example Board' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Удалённая работа' })).toBeChecked()
+    expect(screen.getByRole('combobox', { name: 'Режим обработки' })).toHaveValue('recommendations')
+  })
+
   it('keeps a saved profile when a source disconnects and blocks launch without another connected source', async () => {
     const { sources, searches } = renderSearch()
     await screen.findByRole('heading', { name: 'Поисковые профили' })
@@ -73,6 +94,23 @@ describe('SearchProfilesPage', () => {
     expect(await within(saved).findByText(/Источник.*недоступен/)).toBeVisible()
     expect(within(saved).getByRole('button', { name: 'Запустить поиск' })).toBeDisabled()
     expect((await searches.list())[0].sources).toEqual(['example-board'])
+  })
+
+  it('shows an active profile as paused after source loss and does not restart it on reconnect', async () => {
+    const sources = createFixtureSourceService([{ id: 'example-board', status: 'connected', consent: 'granted', tokenStatus: 'valid' }])
+    const searches = createFixtureSearchService(sources, [{
+      id: 'search-1', roles: ['Developer'], sources: ['example-board'],
+      scope: { regions: [], remote: true }, mode: 'recommendations', active: false,
+    }])
+    render(<MemoryRouter><SearchProfilesPage sourceService={sources} searchService={searches} /></MemoryRouter>)
+    const card = await screen.findByRole('region', { name: 'Developer' })
+    fireEvent.click(within(card).getByRole('button', { name: 'Запустить поиск' }))
+    expect(await within(card).findByText('Состояние: поиск активен')).toBeVisible()
+    await sources.requireReconnect('example-board')
+    expect(await within(card).findByText('Состояние: поиск не запущен')).toBeVisible()
+    await sources.connect('example-board')
+    expect((await searches.list())[0].active).toBe(false)
+    await waitFor(() => expect(within(card).getByRole('button', { name: 'Запустить поиск' })).toBeEnabled())
   })
 
   it('blocks the search route until the profile readiness evaluator approves it', async () => {

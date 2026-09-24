@@ -1,6 +1,7 @@
 export type SourceStatus = 'disconnected' | 'connected' | 'reconnect_required' | 'error'
 export type ConsentState = 'missing' | 'granted' | 'revoked'
-export type SourceConnection = { id: string; status: SourceStatus; consent: ConsentState }
+export type TokenStatus = 'absent' | 'valid' | 'expired' | 'error'
+export type SourceConnection = { id: string; status: SourceStatus; consent: ConsentState; tokenStatus: TokenStatus }
 
 export type SearchScope = { regions: string[]; remote: boolean }
 export type SearchMode = '' | 'recommendations' | 'prepare_after_confirmation'
@@ -32,9 +33,13 @@ export type SearchActivationResult = {
   availableSourceIds: string[]
 }
 
+export function isSourceAvailable(source: SourceConnection | undefined): boolean {
+  return source?.status === 'connected' && source.consent === 'granted' && source.tokenStatus === 'valid'
+}
+
 export function validateSearchActivation(profile: SearchProfile, connections: SourceConnection[]): SearchActivationResult {
   const selected = profile.sources.map((id) => connections.find((source) => source.id === id))
-  const availableSourceIds = selected.filter((source) => source?.status === 'connected' && source.consent === 'granted')
+  const availableSourceIds = selected.filter((source) => isSourceAvailable(source))
     .map((source) => source!.id)
   const blockers: SearchActivationBlocker[] = []
   if (!availableSourceIds.length) blockers.push('source')

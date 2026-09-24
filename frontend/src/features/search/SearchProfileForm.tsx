@@ -7,7 +7,7 @@ const splitList = (value: string) => value.split(',').map((part) => part.trim())
 export function SearchProfileForm({ connections, existingIds, onSave }: {
   connections: SourceConnection[]
   existingIds: string[]
-  onSave: (profile: SearchProfile) => Promise<void>
+  onSave: (profile: SearchProfile) => Promise<boolean>
 }) {
   const [roles, setRoles] = useState('')
   const [query, setQuery] = useState('')
@@ -25,10 +25,11 @@ export function SearchProfileForm({ connections, existingIds, onSave }: {
     event.preventDefault()
     let nextId = counter
     while (existingIds.includes(`search-${nextId}`)) nextId += 1
-    await onSave({
+    const saved = await onSave({
       id: `search-${nextId}`, roles: splitList(roles), query: query.trim(), sources,
       scope: { regions: splitList(regions), remote }, mode, active: false, filters,
     })
+    if (!saved) return
     setCounter(nextId + 1)
     setRoles(''); setQuery(''); setSources([]); setRegions(''); setRemote(false); setMode('')
   }

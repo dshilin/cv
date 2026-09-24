@@ -8,6 +8,10 @@ const statusLabels = {
   reconnect_required: 'требует переподключения', error: 'ошибка',
 }
 const consentLabels = { missing: 'не предоставлено', granted: 'предоставлено', revoked: 'отозвано' }
+const tokenLabels = {
+  absent: 'отсутствует', valid: 'действителен (демонстрация)',
+  expired: 'истёк (демонстрация)', error: 'ошибка проверки (демонстрация)',
+}
 
 export function SourceCard({ connection, onConnect, onCheck, onDisconnect }: {
   connection: SourceConnection
@@ -22,8 +26,9 @@ export function SourceCard({ connection, onConnect, onCheck, onDisconnect }: {
     <p>Используемые данные: поисковые запросы и область поиска.</p>
     <p>Согласие на поиск: {consentLabels[connection.consent]}</p>
     <p>Подключение: {statusLabels[connection.status]}</p>
-    <p>Токен площадки: {connection.status === 'connected' ? 'демонстрационное подключение' : 'не активен'}</p>
-    {connection.status !== 'connected' && <button type="button" onClick={onConnect}>Подключить</button>}
+    <p>Токен площадки: {tokenLabels[connection.tokenStatus]}</p>
+    {(connection.status !== 'connected' || connection.consent !== 'granted' || connection.tokenStatus !== 'valid') &&
+      <button type="button" onClick={onConnect}>Подключить</button>}
     <button type="button" onClick={onCheck}>Проверить</button>
     {connection.status !== 'disconnected' && <button type="button" onClick={onDisconnect}>Отключить</button>}
   </section>

@@ -37,15 +37,21 @@ export function SearchProfilesPage({ sourceService = fixtureSourceService, searc
 
   useEffect(() => {
     let current = true
+    const unsubscribe = sourceService.subscribe((_before, after) => {
+      if (!current) return
+      setConnections(after)
+      void searchService.list().then((saved) => { if (current) setProfiles(saved) })
+        .catch(() => { if (current) setError('Не удалось обновить поисковые профили') })
+    })
     Promise.all([sourceService.list(), searchService.list()]).then(([sources, saved]) => {
       if (current) { setConnections(sources); setProfiles(saved) }
     }).catch(() => { if (current) setError('Не удалось загрузить поисковые настройки') })
-    return () => { current = false }
+    return () => { current = false; unsubscribe() }
   }, [sourceService, searchService])
 
   async function save(profile: SearchProfile) {
-    try { setProfiles(await searchService.save(profile)); setError('') }
-    catch { setError('Не удалось сохранить поисковый профиль') }
+    try { setProfiles(await searchService.save(profile)); setError(''); return true }
+    catch { setError('Не удалось сохранить поисковый профиль'); return false }
   }
   async function refresh() {
     try { setConnections(await sourceService.list()); setError('') }
@@ -55,7 +61,7 @@ export function SearchProfilesPage({ sourceService = fixtureSourceService, searc
     try {
       const latest = await sourceService.list()
       setConnections(latest)
-      setProfiles(await searchService.activate(id, latest))
+      setProfiles(await searchService.activate(id))
       setError('')
     } catch { setError('Поиск не запущен: проверьте профиль и состояние источников') }
   }
