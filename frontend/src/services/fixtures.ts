@@ -77,10 +77,12 @@ export function createFixtureProfileService(seed: ExperienceProfile = initialPro
         const issue = next.conflicts.find((conflict) => conflict.id === id)
         if (!issue) throw new Error(`Unknown conflict: ${id}`)
         issue.resolved = true
+        issue.resolution = resolution.trim()
       } else {
         const question = next.questions.find((item) => item.id === id)
         if (!question) throw new Error(`Unknown question: ${id}`)
         question.resolved = true
+        question.resolution = resolution.trim()
       }
       profile = next
       return structuredClone(profile)

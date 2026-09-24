@@ -67,11 +67,12 @@ describe('ProfilePage', () => {
     fireEvent.change(within(conflict).getByRole('textbox', { name: 'Решение противоречия' }), { target: { value: 'Использовать даты из договора' } })
     fireEvent.click(within(conflict).getByRole('button', { name: 'Сохранить решение' }))
 
-    expect((await service.load()).questions[0].resolved).toBe(true)
-    expect((await service.load()).conflicts[0].resolved).toBe(true)
+    const updated = await service.load()
+    expect(updated.questions[0]).toMatchObject({ resolved: true, resolution: 'Компания подтверждена' })
+    expect(updated.conflicts[0]).toMatchObject({ resolved: true, resolution: 'Использовать даты из договора' })
     expect(await screen.findByRole('link', { name: 'Настроить поиск' })).toBeVisible()
-    expect(screen.queryByRole('listitem', { name: 'Обязательный вопрос: employer' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('listitem', { name: 'Противоречие: dates' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ответ: Компания подтверждена')).toBeVisible()
+    expect(screen.getByText('Решение: Использовать даты из договора')).toBeVisible()
   })
 
   it('offers confirm, edit, and reject actions for an extracted fact', async () => {

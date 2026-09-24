@@ -89,36 +89,40 @@ export function ProfilePage({ service, onProfileChange }: Props) {
           </ul>
         </section>
       )}
-      {(profile.conflicts.some(({ resolved }) => !resolved) || profile.questions.some(({ resolved }) => !resolved)) && (
+      {(profile.conflicts.length > 0 || profile.questions.length > 0) && (
         <section className="profile-card" aria-label="Противоречия и вопросы">
           <h2>Противоречия и вопросы</h2>
           <ul>
-            {profile.conflicts.filter(({ resolved }) => !resolved).map(({ id }) => (
+            {profile.conflicts.map(({ id, resolved, resolution }) => (
               <li key={`conflict-${id}`} id={`conflict-${id}`} aria-label={`Противоречие: ${id}`}>
                 <p>Противоречие: {id}</p>
-                <form onSubmit={async (event) => {
-                  event.preventDefault()
-                  const form = event.currentTarget
-                  const resolution = new FormData(form).get('resolution')?.toString() ?? ''
-                  if (await resolveIssue('conflict', id, resolution)) form.reset()
-                }}>
-                  <label>Решение противоречия <input name="resolution" required /></label>
-                  <button type="submit">Сохранить решение</button>
-                </form>
+                {resolved ? <p>Решение: {resolution}</p> : (
+                  <form onSubmit={async (event) => {
+                    event.preventDefault()
+                    const form = event.currentTarget
+                    const value = new FormData(form).get('resolution')?.toString() ?? ''
+                    if (await resolveIssue('conflict', id, value)) form.reset()
+                  }}>
+                    <label>Решение противоречия <input name="resolution" required /></label>
+                    <button type="submit">Сохранить решение</button>
+                  </form>
+                )}
               </li>
             ))}
-            {profile.questions.filter(({ resolved }) => !resolved).map(({ id }) => (
+            {profile.questions.map(({ id, resolved, resolution }) => (
               <li key={`question-${id}`} id={`question-${id}`} aria-label={`Обязательный вопрос: ${id}`}>
                 <p>Обязательный вопрос: {id}</p>
-                <form onSubmit={async (event) => {
-                  event.preventDefault()
-                  const form = event.currentTarget
-                  const resolution = new FormData(form).get('answer')?.toString() ?? ''
-                  if (await resolveIssue('question', id, resolution)) form.reset()
-                }}>
-                  <label>Ответ на вопрос <input name="answer" required /></label>
-                  <button type="submit">Сохранить ответ</button>
-                </form>
+                {resolved ? <p>Ответ: {resolution}</p> : (
+                  <form onSubmit={async (event) => {
+                    event.preventDefault()
+                    const form = event.currentTarget
+                    const value = new FormData(form).get('answer')?.toString() ?? ''
+                    if (await resolveIssue('question', id, value)) form.reset()
+                  }}>
+                    <label>Ответ на вопрос <input name="answer" required /></label>
+                    <button type="submit">Сохранить ответ</button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>

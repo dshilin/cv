@@ -23,7 +23,7 @@ export type ProfileFact = {
   provenance: string
 }
 
-export type ProfileIssue = { id: string; resolved: boolean }
+export type ProfileIssue = { id: string; resolved: boolean; resolution?: string }
 export type ProfileQuestion = ProfileIssue & { mandatory: boolean }
 
 export type ExperienceProfile = {
