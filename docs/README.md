@@ -42,6 +42,7 @@ Codex; [корневой README](../README.md) содержит только т�
 | SPEC-004 | [Дизайн веб-интерфейса CV Maker](superpowers/specs/2026-09-24-cv-maker-web-interface-design.md) | UX-поток от профиля до подтверждённого отклика |
 | SPEC-005 | [Дизайн backend профилей резюме](superpowers/specs/2026-09-25-resume-profile-backend-design.md) | Черновики импорта без LLM, общая база кандидата и несколько профилей |
 | PLAN-001 | [План реализации веб-интерфейса](superpowers/plans/2026-09-24-cv-maker-web-interface-plan.md) | Тестируемые этапы реализации интерфейсного MVP |
+| PLAN-002 | [План backend профилей резюме](superpowers/plans/2026-09-25-resume-profile-backend-plan.md) | Этапы реализации импорта, базы кандидата и профилей |
 | TRACE-001 | [Реестр критериев](requirements/traceability.md) | Указатели на исходные критерии и инварианты |
 | ADR-001 | [Единое хранение](decisions/ADR-001-documentation.md) | Основание структуры и границы миграции |
 | ARCHIVE-001 | [Архив и происхождение](archive/README.md) | Старые пути, контроль сохранности, Word-копия |
