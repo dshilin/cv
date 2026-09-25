@@ -8,6 +8,8 @@ from sqlalchemy import Engine, create_engine
 
 from cv_backend.api.dependencies import get_current_user_id
 from cv_backend.app import create_app
+from cv_backend.storage.database import Base
+import cv_backend.storage.models  # noqa: F401
 
 TEST_USER_ID = UUID("00000000-0000-4000-8000-000000000001")
 
@@ -34,3 +36,15 @@ def client(database_engine: Engine) -> Iterator[TestClient]:
             yield test_client
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def session_factory(database_engine: Engine):
+    from sqlalchemy.orm import sessionmaker
+
+    Base.metadata.create_all(database_engine)
+    factory = sessionmaker(database_engine, expire_on_commit=False)
+    try:
+        yield factory
+    finally:
+        Base.metadata.drop_all(database_engine)

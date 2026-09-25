@@ -198,31 +198,35 @@ git commit -m "feat: parse resume text into editable draft blocks"
 
 - `DraftRepository.create(owner_id: UUID, blocks: list[DraftBlockInput]) -> ResumeDraft`.
 - `DraftRepository.get(owner_id: UUID, draft_id: UUID) -> ResumeDraft | None`.
-- `DraftService.apply_block(owner_id: UUID, draft_id: UUID, block_id: UUID, idempotency_key: str) -> CandidateItem`; repeated calls with the same key return the same applied item.
+- `DraftService.apply_block(owner_id: UUID, draft_id: UUID, block_id: UUID, items: list[CandidateItemInput], idempotency_key: str) -> list[CandidateItem]`; `items` are explicitly entered/confirmed by the user, never inferred from free text. Repeated calls with the same key return the same items.
 - `CandidateItemInput` содержит тип факта и валидированные типизированные поля для опыта, проекта, навыка, инструмента, образования, сертификата, языка или контакта; произвольный payload без схемы запрещён.
 - `CandidateRepository.add_items(owner_id: UUID, items: list[CandidateItemInput]) -> list[CandidateItem]`.
 - `CandidateRepository.update_item(owner_id: UUID, item_id: UUID, patch: CandidateItemPatch) -> CandidateItem`; обновляет только поля, присланные пользователем, и не меняет профильные переопределения.
 - Каждая запись имеет владельца; репозиторий всегда требует `owner_id` в запросах на чтение/изменение.
 
-- [ ] **Шаг 1: написать repository-тесты с изолированной тестовой БД**
+- [x] **Шаг 1: написать repository-тесты с изолированной тестовой БД**
 
 Проверить на временной SQLite базе, что черновик и блоки восстанавливаются после новой сессии, запись другого владельца не возвращается, а применение одинакового idempotency key не создаёт дубликат.
 
-- [ ] **Шаг 2: выполнить тесты до реализации**
+- [x] **Шаг 2: выполнить тесты до реализации**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage/test_draft_repository.py tests/storage/test_candidate_repository.py -q`
 Ожидание: FAIL, модели и репозитории отсутствуют.
 
-- [ ] **Шаг 3: реализовать модели и миграцию после закрытия gate**
+- [x] **Шаг 3: реализовать модели и миграцию после закрытия gate**
 
 Определить таблицы черновиков и упорядоченных блоков, candidate items с типом и связями на проекты, навыки и инструменты. Хранить текст разобранного блока в черновике. Не создавать таблицу или объект для исходного файла. Применение блоков выполняется транзакционно и только явной командой.
 
-- [ ] **Шаг 4: проверить изоляцию, транзакцию и миграции**
+- [x] **Шаг 4: проверить изоляцию, транзакцию и SQLite-поведение**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage -q`
 Ожидание: PASS; миграции можно применить к пустой тестовой БД, откатить до пустой схемы и применить повторно.
 
 - [ ] **Шаг 5: зафиксировать модель данных**
+
+Alembic migration отложена до решения Q-007: не создавать постоянную схему,
+пока не определены полное удаление данных и охват резервных копий. ORM-модели
+проверяются через временную тестовую SQLite схему; это не production migration.
 
 Зафиксировать код миграции и согласованные документы отдельным commit после проверки diff.
 
