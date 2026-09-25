@@ -15,6 +15,7 @@ export interface ProfileService {
   updateFact(input: UpdateFactInput): Promise<ExperienceProfile>
   reviewFact(input: ReviewFactInput): Promise<ExperienceProfile>
   resolveIssue(input: ResolveIssueInput): Promise<ExperienceProfile>
+  clear(): Promise<void>
 }
 
 export interface SourceService {
@@ -23,6 +24,7 @@ export interface SourceService {
   check(id: string): Promise<SourceConnection[]>
   disconnect(id: string): Promise<SourceConnection[]>
   revokeConsent(id: string): Promise<SourceConnection[]>
+  reset(id: string): Promise<SourceConnection[]>
   requireReconnect(id: string): Promise<SourceConnection[]>
   subscribe(listener: (before: SourceConnection[], after: SourceConnection[]) => void): () => void
 }
@@ -31,6 +33,8 @@ export interface SearchService {
   list(): Promise<SearchProfile[]>
   save(profile: SearchProfile): Promise<SearchProfile[]>
   activate(id: string): Promise<SearchProfile[]>
+  deactivateAll(): Promise<SearchProfile[]>
+  clear(): Promise<void>
 }
 
 export type JobStatus = 'new' | 'suitable' | 'needs_review' | 'saved' | 'rejected' | 'preparing' | 'sent'
@@ -61,10 +65,20 @@ export interface JobDetails extends JobSummary {
 export interface JobService {
   list(): Promise<JobSummary[]>
   get(id: string): Promise<JobDetails>
+  clear(): Promise<void>
 }
 
 export interface ApplicationService {
   prepare(jobId: string): Promise<ApplicationPackage>
   confirmContent(id: string): Promise<ApplicationPackage>
   send(id: string, idempotencyKey: string): Promise<SendResult>
+  pendingCount(): Promise<number>
+  clear(): Promise<void>
+}
+
+export interface SettingsService {
+  listSources(): Promise<SourceConnection[]>
+  revokeConsent(): Promise<SourceConnection[]>
+  disableAutomation(): Promise<void>
+  deleteData(): Promise<void>
 }

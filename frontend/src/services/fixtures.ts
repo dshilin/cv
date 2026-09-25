@@ -1,7 +1,7 @@
 import type { ExperienceProfile, ProfileFact, ProfileSection } from '../domain/profile'
 import { canSendApplication, type ApplicationPackage, type GeneratedDocument, type SendResult } from '../domain/application'
 import { isSourceAvailable, validateSearchActivation, type SearchProfile, type SourceConnection } from '../domain/search'
-import type { ApplicationService, JobDetails, JobService, ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SourceService, UpdateFactInput } from './contracts'
+import type { ApplicationService, JobDetails, JobService, ProfileService, ResolveIssueInput, ReviewFactInput, SearchService, SettingsService, SourceService, UpdateFactInput } from './contracts'
 
 const initialProfile: ExperienceProfile = {
   sections: {
@@ -42,6 +42,7 @@ export function createFixtureProfileService(seed: ExperienceProfile = initialPro
 
   return {
     async load() { return structuredClone(profile) },
+    async clear() { profile = { sections: { basics: 'needs_input', employment: 'needs_input', projects: 'needs_input', skills: 'needs_input', education: 'needs_input', languages: 'needs_input', additional: 'needs_input' }, facts: [], conflicts: [], questions: [], resumeFactIds: [] } },
     async updateFact({ id, value, provenance }: UpdateFactInput) {
       const trimmed = value.trim()
       const source = provenance.trim()
@@ -115,6 +116,7 @@ export function createFixtureSourceService(seed: SourceConnection[] = initialCon
     async check(id) { return update(id, (source) => ({ ...source })) },
     async disconnect(id) { return update(id, (source) => ({ ...source, status: 'disconnected', consent: 'revoked', tokenStatus: 'absent' })) },
     async revokeConsent(id) { return update(id, (source) => ({ ...source, consent: 'revoked' })) },
+    async reset(id) { return update(id, (source) => ({ ...source, status: 'disconnected', consent: 'missing', tokenStatus: 'absent' })) },
     async requireReconnect(id) { return update(id, (source) => ({ ...source, status: 'reconnect_required', tokenStatus: 'expired' })) },
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
   }
@@ -147,6 +149,8 @@ export function createFixtureSearchService(sourceService: SourceService, seed: S
       profiles = profiles.map((item) => item.id === id ? { ...item, active: true } : item)
       return structuredClone(profiles)
     },
+    async deactivateAll() { profiles = profiles.map((item) => ({ ...item, active: false })); return structuredClone(profiles) },
+    async clear() { profiles = [] },
   }
 }
 
@@ -172,7 +176,7 @@ const initialJobs: JobDetails[] = [
 ]
 
 export function createFixtureJobService(seed: JobDetails[] = initialJobs): JobService {
-  const jobs = structuredClone(seed)
+  let jobs = structuredClone(seed)
   return {
     async list() {
       return structuredClone(jobs.map(({ description: _description, requiredSkills: _requiredSkills, ...summary }) => summary))
@@ -182,6 +186,7 @@ export function createFixtureJobService(seed: JobDetails[] = initialJobs): JobSe
       if (!job) throw new Error(`Unknown job: ${id}`)
       return structuredClone(job)
     },
+    async clear() { jobs = [] },
   }
 }
 
@@ -253,7 +258,30 @@ export function createFixtureApplicationService(profileService: ProfileService, 
       pkg.sendState = 'sent'
       return structuredClone(result)
     },
+    async pendingCount() { return packages.size - results.size },
+    async clear() { packages.clear(); results.clear() },
   }
 }
 
 export const fixtureApplicationService = createFixtureApplicationService(fixtureProfileService, fixtureJobService)
+
+export function createFixtureSettingsService(profile: ProfileService, sources: SourceService, searches: SearchService, jobs: JobService, applications: ApplicationService): SettingsService {
+  return {
+    async listSources() { return sources.list() },
+    async revokeConsent() {
+      const current = await sources.list()
+      let next = current
+      for (const source of current) next = await sources.revokeConsent(source.id)
+      return next
+    },
+    async disableAutomation() { await searches.deactivateAll() },
+    async deleteData() {
+      await profile.clear()
+      await searches.clear()
+      await applications.clear()
+      await jobs.clear()
+      const current = await sources.list()
+      for (const source of current) await sources.reset(source.id)
+    },
+  }
+}

@@ -6,6 +6,7 @@ import { SearchProfilesPage } from '../features/search/SearchProfilesPage'
 import { JobsPage } from '../features/jobs/JobsPage'
 import { JobDetailsPage } from '../features/jobs/JobDetailsPage'
 import { ApplicationReviewPage } from '../features/applications/ApplicationReviewPage'
+import { SettingsPage } from '../features/settings/SettingsPage'
 import { evaluateProfileReadiness } from '../domain/readiness'
 import type { ExperienceProfile } from '../domain/profile'
 import type { ApplicationService, JobService, ProfileService } from '../services/contracts'
@@ -47,7 +48,7 @@ export function AppRoutes({ profileService, jobService, applicationService }: { 
         <Route path="/jobs" element={<JobsPage jobService={jobService} />} />
         <Route path="/jobs/:id" element={<JobDetailsRoute jobService={jobService} />} />
         <Route path="/applications" element={<ApplicationRoute applicationService={applicationService} jobService={jobService} />} />
-        <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/profile" replace />} />
       </Route>
     </Routes>

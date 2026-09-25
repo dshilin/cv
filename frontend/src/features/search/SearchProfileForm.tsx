@@ -19,19 +19,21 @@ export function SearchProfileForm({ connections, existingIds, onSave }: {
     requiredSkills: [], desiredSkills: [], seniority: '', salaryMinimum: '',
     employmentType: '', stopWords: [], schedule: '', timezone: '', dailyLimit: '',
   })
+  const [filterText, setFilterText] = useState({ requiredSkills: '', desiredSkills: '', stopWords: '' })
   const [counter, setCounter] = useState(1)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     let nextId = counter
     while (existingIds.includes(`search-${nextId}`)) nextId += 1
+    const nextFilters = { ...filters, requiredSkills: splitList(filterText.requiredSkills), desiredSkills: splitList(filterText.desiredSkills), stopWords: splitList(filterText.stopWords) }
     const saved = await onSave({
       id: `search-${nextId}`, roles: splitList(roles), query: query.trim(), sources,
-      scope: { regions: splitList(regions), remote }, mode, active: false, filters,
+      scope: { regions: splitList(regions), remote }, mode, active: false, filters: nextFilters,
     })
     if (!saved) return
     setCounter(nextId + 1)
-    setRoles(''); setQuery(''); setSources([]); setRegions(''); setRemote(false); setMode('')
+    setRoles(''); setQuery(''); setSources([]); setRegions(''); setRemote(false); setMode(''); setFilters({ ...filters, requiredSkills: [], desiredSkills: [], stopWords: [] }); setFilterText({ requiredSkills: '', desiredSkills: '', stopWords: '' })
   }
 
   return <form className="profile-card" onSubmit={(event) => { void submit(event) }}>
@@ -55,12 +57,12 @@ export function SearchProfileForm({ connections, existingIds, onSave }: {
     </select></label>
     <details>
       <summary>Расширенные фильтры</summary>
-      <label>Обязательные навыки <input value={filters.requiredSkills.join(', ')} onChange={(event) => setFilters({ ...filters, requiredSkills: splitList(event.target.value) })} /></label>
-      <label>Желательные навыки <input value={filters.desiredSkills.join(', ')} onChange={(event) => setFilters({ ...filters, desiredSkills: splitList(event.target.value) })} /></label>
+      <label>Обязательные навыки <input value={filterText.requiredSkills} onChange={(event) => setFilterText({ ...filterText, requiredSkills: event.target.value })} /></label>
+      <label>Желательные навыки <input value={filterText.desiredSkills} onChange={(event) => setFilterText({ ...filterText, desiredSkills: event.target.value })} /></label>
       <label>Уровень <input value={filters.seniority} onChange={(event) => setFilters({ ...filters, seniority: event.target.value })} /></label>
       <label>Зарплата от <input value={filters.salaryMinimum} onChange={(event) => setFilters({ ...filters, salaryMinimum: event.target.value })} /></label>
       <label>Тип занятости <input value={filters.employmentType} onChange={(event) => setFilters({ ...filters, employmentType: event.target.value })} /></label>
-      <label>Стоп-слова <input value={filters.stopWords.join(', ')} onChange={(event) => setFilters({ ...filters, stopWords: splitList(event.target.value) })} /></label>
+      <label>Стоп-слова <input value={filterText.stopWords} onChange={(event) => setFilterText({ ...filterText, stopWords: event.target.value })} /></label>
       <label>Расписание <input value={filters.schedule} onChange={(event) => setFilters({ ...filters, schedule: event.target.value })} /></label>
       <label>Часовой пояс <input value={filters.timezone} onChange={(event) => setFilters({ ...filters, timezone: event.target.value })} /></label>
       <label>Дневной лимит <input type="number" min="1" value={filters.dailyLimit} onChange={(event) => setFilters({ ...filters, dailyLimit: event.target.value })} /></label>
