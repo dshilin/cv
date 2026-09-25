@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from pydantic import TypeAdapter
@@ -56,9 +57,38 @@ class CandidateRepository:
     def get_item(self, owner_id: UUID, item_id: UUID) -> CandidateItemModel | None:
         return self.session.scalar(
             select(CandidateItemModel)
-            .where(CandidateItemModel.owner_id == owner_id, CandidateItemModel.id == item_id)
+            .where(
+                CandidateItemModel.owner_id == owner_id,
+                CandidateItemModel.id == item_id,
+                CandidateItemModel.is_deleted.is_(False),
+            )
             .options(selectinload(CandidateItemModel.versions))
         )
+
+    def list_items(self, owner_id: UUID) -> list[CandidateItemModel]:
+        return list(
+            self.session.scalars(
+                select(CandidateItemModel).where(
+                    CandidateItemModel.owner_id == owner_id,
+                    CandidateItemModel.is_deleted.is_(False),
+                )
+            ).all()
+        )
+
+    def soft_delete_item(self, owner_id: UUID, item_id: UUID) -> bool:
+        item = self.session.scalar(
+            select(CandidateItemModel).where(
+                CandidateItemModel.owner_id == owner_id,
+                CandidateItemModel.id == item_id,
+            )
+        )
+        if item is None:
+            return False
+        if not item.is_deleted:
+            item.is_deleted = True
+            item.deleted_at = datetime.now(timezone.utc)
+        self.session.flush()
+        return True
 
     def update_item(
         self, owner_id: UUID, item_id: UUID, changes: dict[str, object]

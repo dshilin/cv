@@ -1,46 +1,78 @@
 ---
 id: PLAN-002
 status: approved
-version: 1.1
+version: 1.2
 owner: Backend-разработчик (роль; персональное назначение отсутствует)
-approved_by: Пользователь — поручение начать реализацию «пиши реализацию первую как сам понимаешь согласно всех необходимых нюансов включая TDD», чат 2026-09-25
+approved_by: Пользователь подтвердил выполнение редакции 1.2 сообщением «ОК» 2026-09-25; реализация начата в отдельной ветке
 last_reviewed: 2026-09-25
-scope: Поэтапная реализация SPEC-005 в backend-модуле
+scope: Поэтапная реализация SPEC-005 в backend API и подключённом frontend
 ---
 
 # Backend профилей резюме — план реализации
 
 > **Для исполнителя:** перед началом реализации применить `superpowers:subagent-driven-development` (рекомендуется) либо `superpowers:executing-plans`. Выполнять задачи по одной; шаги отмечаются чекбоксами.
 
-**Цель:** Реализовать backend для импорта текста и документов в сохраняемые черновики, общей базы кандидата и нескольких независимых специализационных профилей.
+**Цель:** Подогнать существующую реализацию backend и frontend под SPEC-005 1.3: явное создание черновика, текстовый блок опыта, мягкое удаление и понятный отказ импорта.
 
-**Архитектура:** Новый модуль `backend/` на Python реализует модульный монолит с FastAPI и Pydantic. Доменное разбиение, извлечение документов и правила изменения профиля отделены от API и хранения. PostgreSQL/SQLAlchemy/Alembic соответствуют рекомендуемому стеку SPEC-002; доступ к пользователю внедряется через заменяемую зависимость, поскольку OAuth-провайдер не входит в этот этап. Исходный файл обрабатывается временно, а сохраняемый черновик содержит разобранные блоки.
+**Архитектура:** Существующие FastAPI/SQLAlchemy API и React frontend корректируются в рамках их текущих границ. Новый черновик создаётся отдельной командой или загрузкой файла; введённый текст добавляется блоком `experience` к существующему черновику. Ошибка извлечения возвращается интерфейсу и не создаёт черновик. Удаление профиля, факта или черновика только выставляет tombstone-поля; история и связи сохраняются.
 
 **Стек:** Python 3.12+, FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL, pytest, HTTPX TestClient; `python-multipart` для multipart upload. Библиотеки PDF/DOCX выбираются после проверки официальной документации перед реализацией файлового импорта. Unit/API tests используют временную SQLite базу; миграции дополнительно проверяются на PostgreSQL до релиза.
 
 **Спецификация:** [SPEC-005 — Дизайн backend профилей резюме](../specs/2026-09-25-resume-profile-backend-design.md)
 
-## Общие ограничения
+## Глобальные ограничения
 
-- Разбор выполняется детерминированно, без LLM.
-- Загруженный PDF/DOCX удаляется после извлечения текста, включая путь ошибки.
-- Черновик хранится отдельно и сам по себе не меняет базу кандидата или профиль.
-- Только явная команда пользователя создаёт, редактирует или удаляет постоянные данные.
-- Каждый аккаунт может иметь несколько профилей; выбор и порядок данных одного профиля не меняют остальные профили.
-- Навыки и инструменты хранятся раздельно и включаются в специализационный профиль независимо.
-- Не записывать реальные резюме, персональные данные, содержимое документов и загруженные файлы в тестовые фикстуры, логи или репозиторий.
-- Не реализовывать авторизацию через Яндекс/VK, вакансии, рыночный анализ, генерацию документов или отправку откликов в рамках этого плана.
-- Перед schema migrations согласовать модель сущностей и жизненный цикл статусов с открытыми Q-004, Q-005 и Q-007.
-- Перед файловым импортом получить решение по Q-008 (сканированные PDF/OCR и `.doc`); перед политикой автоматической очистки черновиков получить решение по Q-009.
-- Предлагаемые технические значения для review: предел загрузки 20 MiB, очистка заброшенных временных файлов старше 15 минут, SQLite для unit/API tests и PostgreSQL для production migration check. Это конфигурационные defaults, не ограничения формата резюме.
+- Разбор выполняется без LLM.
+- Новый черновик создаётся только отдельной командой пользователя или импортом файла; добавление текста не создаёт новый черновик.
+- Текст пользователя добавляется отдельным редактируемым блоком опыта существующего черновика.
+- При ошибке чтения/распознавания файла API возвращает понятную ошибку, черновик не создаётся и файл не сохраняется.
+- Удаление — только `is_deleted=true` и `deleted_at`; физическая очистка не выполняется, история и связи сохраняются.
+- Черновик явно переводится в `reviewed`, выходит из очереди проверки, но сохраняется до мягкого удаления; TTL нет.
+- Каждый импорт файла создаёт новый черновик, без дедупликации.
+- Не добавлять OCR, старый DOC, авторизацию, рыночный анализ или генерацию документов.
+
+## Review Focus
+
+- Пустой текстовый черновик создаётся отдельной командой и после перезагрузки читается; покрыть API-тестом.
+- Текстовый блок добавляется существующему черновику с `kind=experience` и следующим ordinal, не создавая второй draft; покрыть API-тестом.
+- Ошибка для повреждённого/неподдерживаемого файла видна пользователю и не оставляет draft; покрыть API и UI тестами.
+- Soft-delete скрывает ресурс при GET/list, сохраняет связанные версии/связи и не позволяет включить удалённый факт в профиль; покрыть storage/API тестами.
+- Повторный одинаковый импорт создаёт два draft; reviewed исключается из очереди, но сохраняется; покрыть API тестами.
+
+---
+
+## Обновлённая структура файлов для оставшихся задач
+
+- `backend/src/cv_backend/storage/models/draft.py` — состояние reviewed и поля мягкого удаления черновиков.
+- `backend/src/cv_backend/storage/models/candidate.py` — tombstone-поля элементов базы кандидата.
+- `backend/src/cv_backend/storage/models/profile.py` — tombstone-поля профилей.
+- `backend/src/cv_backend/storage/repositories/drafts.py` — создание пустого draft, добавление experience block, фильтры удаления и очередь.
+- `backend/src/cv_backend/storage/repositories/candidate.py` — soft-delete и фильтрация элементов.
+- `backend/src/cv_backend/storage/repositories/profiles.py` — soft-delete и фильтрация профилей/выборок.
+- `backend/src/cv_backend/api/routes/resume_drafts.py` — POST create, add experience block, review, DELETE и ошибки upload.
+- `backend/src/cv_backend/api/routes/profiles.py` и route общей базы — семантика soft-delete.
+- `backend/alembic/versions/` — миграция для полей и enum/check изменения, если требуется для актуальной поддерживаемой схемы.
+- `frontend/src/services/resume-profiles.ts` — методы createDraft/addExperienceBlock и извлечение detail ошибки API.
+- `frontend/src/features/resumeProfiles/ResumeProfilesPage.tsx` — кнопка создания черновика, добавление блока к выбранному draft, текст ошибки upload.
+- Тесты в `backend/tests/api/`, `backend/tests/storage/`, `frontend/src/services/resume-profiles.test.ts` и `frontend/src/features/resumeProfiles/ResumeProfilesPage.test.tsx`.
+
+---
+
+## Ограничения первоначального объёма
+
+- Первоначальные Tasks 1–7 ниже описывают уже выполненный базовый этап; устаревшие требования по созданию черновика из произвольного текста и обработке временных байтов заменяются Task 8.
+- Сохраняются все инварианты SPEC-005: нет LLM, факты/профили изменяются только по явной команде, пользовательские файлы и реальные данные не помещаются в тесты/логи/репозиторий.
+- Q-007 и Q-009 решены для этого MVP согласно ADR-002; Q-008 отложен — OCR и `.doc` не реализовывать. Это не блокирует PDF с текстовым слоем или DOCX.
+- Не реализовывать авторизацию через Яндекс/VK, вакансии, рыночный анализ, генерацию документов или отправку откликов.
+- Сохранить ограничение загрузки 20 MiB и существующие SQLite тесты; не добавлять требования по самостоятельной очистке временных байтов.
 
 ## Особое внимание при проверке
 
-- PDF содержит текст, но извлечение частичное или нарушает порядок чтения: сохранить весь доступный текст и показать непонятные фрагменты отдельно. Task 5 проверяет частичное извлечение и сохранение фрагментов.
-- Сканированный PDF не содержит текстового слоя: вернуть явную ошибку/инструкцию, не создавать пустой успешный черновик и не запускать OCR до решения Q-008. Task 5 проверяет отказ без черновика.
-- DOCX повреждён, переименован или имеет неверный MIME: отклонить по фактическому формату и удалить временные байты. Task 5 проверяет повреждение и несовпадение формата.
-- Повторный импорт или повторная команда переноса блока: не создавать дубли; совпадения показать для ручного решения. Tasks 3, 6 и 7 проверяют повторное применение и повторный импорт.
-- Изменение общей записи, используемой несколькими профилями: выполнить только запрошенное пользователем действие и явно показать затронутые профили; не переписывать их формулировки. Tasks 4 и 6 проверяют независимость профилей и отсутствие автоматического переписывания.
+- Повреждённый или неподдерживаемый документ: запрос завершается понятной ошибкой без создания черновика; сообщение видно в интерфейсе.
+- Текст опыта: добавляется только в уже выбранный черновик как отдельный `experience` block.
+- Удалённые сущности не возвращаются обычным GET/list, а их история и связи остаются сохранёнными.
+- Повторная загрузка одинакового файла создаёт независимый новый черновик; автоматического объединения нет.
+- Явная проверка убирает черновик из очереди, но не удаляет его и не запускает TTL.
 
 ## Структура файлов
 
@@ -59,7 +91,6 @@ scope: Поэтапная реализация SPEC-005 в backend-модуле
 - `backend/src/cv_backend/domain/profiles.py` — профиль, целевые роли, условия поиска, выборки и порядок секций.
 - `backend/src/cv_backend/services/text_parser.py` — разбор текста по поддерживаемым заголовкам с сохранением непрочитанных блоков.
 - `backend/src/cv_backend/services/document_extractor.py` — извлечение текста из разрешённых форматов.
-- `backend/src/cv_backend/services/upload_temp.py` — временное размещение байтов и гарантированное удаление.
 - `backend/src/cv_backend/services/draft_service.py` — создание, редактирование, применение и удаление черновиков.
 - `backend/src/cv_backend/services/profile_service.py` — пользовательские изменения базы, CRUD профиля, выбор фактов/навыков/инструментов.
 - `backend/src/cv_backend/storage/` — SQLAlchemy models, сессия и репозитории.
@@ -182,7 +213,7 @@ git commit -m "feat: parse resume text into editable draft blocks"
 
 ### Task 3: Схема хранения черновиков и общей базы кандидата
 
-**Decision gate:** до миграции сверить статусы, сущности опыта и историю с Q-004, Q-005 и Q-007. Обновить SPEC-003/SPEC-005 или создать ADR и получить продуктовое решение на любое изменение смысла. Не мигрировать до закрытия зависимых вопросов.
+**Решение для оставшихся миграций:** Q-007 закрыт для MVP мягким удалением; новые миграционные изменения и тесты входят в Task 8. Не менять смысл фактов из SPEC-003/Q-004/Q-005.
 
 **Файлы:**
 
@@ -190,7 +221,6 @@ git commit -m "feat: parse resume text into editable draft blocks"
 - Создать: `backend/src/cv_backend/storage/database.py`, `backend/src/cv_backend/storage/models/draft.py`, `backend/src/cv_backend/storage/models/candidate.py`
 - Создать: `backend/src/cv_backend/storage/repositories/drafts.py`, `backend/src/cv_backend/storage/repositories/candidate.py`
 - Создать: `backend/src/cv_backend/services/draft_service.py`
-- Создать: `backend/alembic.ini`, `backend/alembic/env.py`, `backend/alembic/versions/`
 - Создать: `backend/tests/storage/test_draft_repository.py`, `backend/tests/storage/test_candidate_repository.py`
 - Изменить после решения вопросов: `docs/architecture/experience.md`, `docs/requirements/traceability.md`, `docs/governance/open-questions.md`
 
@@ -213,20 +243,20 @@ git commit -m "feat: parse resume text into editable draft blocks"
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage/test_draft_repository.py tests/storage/test_candidate_repository.py -q`
 Ожидание: FAIL, модели и репозитории отсутствуют.
 
-- [x] **Шаг 3: реализовать модели и миграцию после закрытия gate**
+- [x] **Шаг 3: реализовать ORM-модели; миграцию оставить отдельным этапом**
 
-Определить таблицы черновиков и упорядоченных блоков, candidate items с типом и связями на проекты, навыки и инструменты. Хранить текст разобранного блока в черновике. Не создавать таблицу или объект для исходного файла. Применение блоков выполняется транзакционно и только явной командой.
+Определить ORM-таблицы черновиков и упорядоченных блоков, candidate items с типом и связями на проекты, навыки и инструменты. Хранить текст разобранного блока в черновике. Не создавать таблицу или объект для исходного файла. Применение блоков выполняется транзакционно и только явной командой. Постоянные Alembic migrations в базовом этапе не создавались; это входит в Task 8.
 
 - [x] **Шаг 4: проверить изоляцию, транзакцию и SQLite-поведение**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage -q`
-Ожидание: PASS; миграции можно применить к пустой тестовой БД, откатить до пустой схемы и применить повторно.
+Ожидание: PASS; временная SQLite схема создаётся через SQLAlchemy metadata. Проверка Alembic upgrade/downgrade входит в Task 8.
 
 - [x] **Шаг 5: зафиксировать модель данных**
 
-Alembic migration отложена до решения Q-007: не создавать постоянную схему,
-пока не определены полное удаление данных и охват резервных копий. ORM-модели
-проверяются через временную тестовую SQLite схему; это не production migration.
+Первоначальный этап проверял ORM через SQLite; миграции для soft-delete и нового
+состояния черновика добавляются в Task 8. Физическая очистка и резервные копии
+не входят в согласованный объём.
 
 Зафиксировать код миграции и согласованные документы отдельным commit после проверки diff.
 
@@ -290,7 +320,7 @@ def test_editing_base_item_does_not_overwrite_profile_text(profile_service, cand
 
 - [x] **Шаг 3: реализовать CRUD и профильные связи**
 
-Хранить названия, целевые должности, условия поиска, заголовок, описание и пользовательские формулировки в профиле. Хранить выбор и порядок общих записей, навыков, инструментов и разделов как профильные связи. Запросы с чужими или неподтверждёнными item IDs отклонять целиком, не сохранять частичный набор. Alembic migration остаётся gate Q-007.
+Хранить названия, целевые должности, условия поиска, заголовок, описание и пользовательские формулировки в профиле. Хранить выбор и порядок общих записей, навыков, инструментов и разделов как профильные связи. Запросы с чужими или неподтверждёнными item IDs отклонять целиком, не сохранять частичный набор. Миграция полей удаления для профилей входит в Task 8.
 
 - [x] **Шаг 4: проверить независимость и пользовательские изменения**
 
@@ -304,21 +334,19 @@ git add backend/src/cv_backend/domain backend/src/cv_backend/storage backend/src
 git commit -m "feat: add independent resume specialization profiles"
 ```
 
-### Task 5: Временное извлечение PDF/DOCX
+### Task 5: Извлечение текста из PDF/DOCX
 
-**Decision gate:** перед кодом закрыть Q-008. До этого реализуются только изолированные интерфейсы и тесты для уже согласованных типов; поддержка OCR или `.doc` не подразумевается.
+OCR и `.doc` остаются вне объёма согласно SPEC-005 §9; поддерживаются PDF с текстовым слоем и DOCX.
 
 **Файлы:**
 
-- Создать: `backend/src/cv_backend/services/upload_temp.py`, `backend/src/cv_backend/services/document_extractor.py`
-- Создать: `backend/tests/unit/test_upload_temp.py`, `backend/tests/unit/test_document_extractor.py`
+- Создать: `backend/src/cv_backend/services/document_extractor.py`
+- Создать: `backend/tests/unit/test_document_extractor.py`
 - Создать после выбора библиотек: малые синтетические fixtures в `backend/tests/fixtures/`
 
 **Интерфейсы:**
 
-- `extract_document(upload: UploadFile) -> ExtractedDocumentText`.
-- `ExtractedDocumentText = { text: str, detected_format: Literal["pdf", "docx"] }`.
-- `with_temporary_upload(upload, extractor) -> ExtractedDocumentText` удаляет временный файл/буфер в `finally` независимо от успеха.
+- `extract_document_text(filename: str, content: bytes) -> str`.
 
 - [x] **Шаг 1: сверить официальные документы библиотек PDF/DOCX**
 
@@ -326,21 +354,21 @@ git commit -m "feat: add independent resume specialization profiles"
 
 - [x] **Шаг 2: написать тесты извлечения и валидации**
 
-Проверить текстовый PDF и DOCX, пустой PDF без слоя текста и несовпадение расширения/сигнатуры. Загрузочный endpoint дополнительно проверяет лимит и закрывает UploadFile в `finally`; source bytes не возвращаются и не хранятся в моделях.
+Проверить валидный PDF и DOCX, пустой PDF без текстового слоя и повреждённый/неподдерживаемый файл. Для неуспешного импорта endpoint возвращает ошибку и не создаёт черновик.
 
 - [x] **Шаг 3: выполнить тесты до реализации**
 
-Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_upload_temp.py tests/unit/test_document_extractor.py -q`
+Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_document_extractor.py -q`
 Ожидание: FAIL, функции извлечения отсутствуют.
 
-- [x] **Шаг 4: реализовать ограниченную временную обработку**
+- [x] **Шаг 4: реализовать извлечение текста без сохранения исходного файла**
 
-Ограничить загрузку `MAX_UPLOAD_BYTES=20 MiB`, проверять фактическую PDF/ZIP сигнатуру, не доверять MIME отдельно; использовать request-scoped UploadFile, прочитать не более лимита + 1 байт и закрыть в `finally`. Защитить DOCX от чрезмерного распакованного объёма. Исходный файл не переносить в постоянное хранилище. OCR и `.doc` не реализовывать до решения Q-008.
+Ограничить загрузку `MAX_UPLOAD_BYTES=20 MiB`, проверять фактическую PDF/ZIP сигнатуру и не доверять MIME отдельно. Защитить DOCX от чрезмерного распакованного объёма. При ошибке извлечения вернуть ошибку; не создавать пустой draft и не сохранять исходный файл. OCR и `.doc` не реализовывать.
 
 - [x] **Шаг 5: проверить библиотечные fixtures и повторно выполнить тесты**
 
-Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_upload_temp.py tests/unit/test_document_extractor.py -q`
-Ожидание: PASS; после тестов нет файлов в temp-каталоге, а нераспознанный текст не теряется.
+Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_document_extractor.py -q`
+Ожидание: PASS для поддерживаемых файлов; отказные случаи не создают черновик и дают проверяемую ошибку.
 
 ### Task 6: API черновиков, общей базы, профилей и frontend-подключение
 
@@ -429,16 +457,167 @@ Set-Location ..; python scripts/check_docs.py
 git diff --check
 ```
 
-Ожидание: backend suite и документационная проверка успешны; тесты не используют реальные персональные данные, временные загрузки удалены.
+Ожидание: backend suite и документационная проверка успешны; тесты не используют реальные персональные данные или загруженные пользователем файлы.
 
 - [ ] **Шаг 5: выполнить обзор и коммит**
 
 Проверить staged diff на незапрошенные интеграции, автоматические изменения данных, исходные файлы в постоянном хранилище и чувствительные тестовые данные. Сохранить итоговые связи в traceability и зафиксировать сквозной этап отдельным коммитом.
 
+### Task 8: Мягкое удаление, очередь проверки и явное создание черновика
+
+**Файлы:**
+
+- Изменить: `backend/src/cv_backend/storage/models/draft.py`, `candidate.py`, `profile.py`.
+- Изменить: `backend/src/cv_backend/storage/repositories/drafts.py`, `candidate.py`, `profiles.py`.
+- Изменить: `backend/src/cv_backend/services/draft_service.py`, `profile_service.py`.
+- Изменить: `backend/src/cv_backend/api/routes/resume_drafts.py`, `profiles.py`, `app.py`.
+- Создать: `backend/alembic.ini`, `backend/alembic/env.py`, migration в `backend/alembic/versions/` и migration tests.
+- Изменить/создать: `backend/tests/storage/test_draft_repository.py`, `test_candidate_repository.py`, `test_profile_repository.py`, `backend/tests/api/test_resume_profiles.py`.
+
+**Интерфейсы:**
+
+- Все удаляемые корневые записи используют `is_deleted: bool` и `deleted_at: datetime | None`; soft-delete идемпотентен.
+- `POST /api/v1/resume-drafts` создаёт пустой draft; `GET /api/v1/resume-drafts` возвращает только непроверенные и не удалённые drafts по умолчанию, а `?state=reviewed` позволяет найти проверенные.
+- `POST /api/v1/resume-drafts/{draft_id}/review` явно завершает проверку, draft остаётся в БД и уходит из очереди. Поддержать выбор `state=reviewed` в списке, чтобы сохранённый draft можно было снова открыть.
+- DELETE endpoints для draft, candidate item и profile только выставляют tombstone-поля. Обычные list/get исключают удалённые записи; версии, блоки, application records и selections не каскадно удаляются.
+
+- [ ] **Шаг 1: написать storage/API тесты мягкого удаления и жизненного цикла**
+
+Добавить, среди прочих, проверки с такими результатами:
+
+```python
+deleted = client.delete(f"/api/v1/profiles/{profile['id']}")
+assert deleted.status_code == 204
+assert client.get(f"/api/v1/profiles/{profile['id']}").status_code == 404
+assert client.get("/api/v1/profiles").json() == []
+
+reviewed = client.post(f"/api/v1/resume-drafts/{draft_id}/review")
+assert reviewed.status_code == 200
+assert all(row["draft_id"] != draft_id for row in client.get("/api/v1/resume-drafts").json())
+assert any(row["draft_id"] == draft_id for row in client.get("/api/v1/resume-drafts?state=reviewed").json())
+```
+
+Storage assertions additionally verify `deleted_at`, versions, draft blocks, application rows and selections remain; deleted items cannot be selected for profiles. Direct GET of a deleted resource returns 404. Repeat deletion is safe.
+
+- [ ] **Шаг 2: запустить новые тесты и проверить ожидаемый отказ**
+
+Запуски: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage tests/api/test_resume_profiles.py -q`.
+Ожидание: новые тесты падают из-за отсутствующих tombstone-полей, фильтров и review endpoint.
+
+- [ ] **Шаг 3: реализовать модели, репозитории, API и миграцию минимальным диффом**
+
+Добавить `is_deleted=false` и nullable `deleted_at` к `ResumeDraftModel`, `CandidateItemModel`, `SpecializationProfileModel`; расширить draft state check на `reviewed`; не добавлять удаление к историческим версиям/связям. Создать Alembic migration с upgrade/downgrade, применить и откатить её на чистой SQLite тестовой БД, затем повторно применить. Если PostgreSQL доступен в проверочной среде, проверить upgrade/downgrade и там; если нет, отметить ограничение в progress. Обновить repository queries, так что пользовательские list/get фильтруют `is_deleted=false`. Soft-delete не изменяет статус факта и не удаляет relations. Фильтровать удалённые элементы при чтении/сборке профиля и отклонять их при новых selections. При `review` установить state `reviewed`; последующее применение блока не должно возвращать черновик в очередь.
+
+- [ ] **Шаг 4: запустить фокусные и полные backend тесты**
+
+Запуски: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage tests/api -q`, затем полный `pytest`. Ожидание: все tombstone, ownership, review queue, migration и прежние сценарии проходят.
+
+- [ ] **Шаг 5: зафиксировать отдельный этап**
+
+```powershell
+git add backend/src/cv_backend/storage backend/src/cv_backend/services backend/src/cv_backend/api backend/alembic backend/tests
+git commit -m "feat: add soft deletion and draft review lifecycle"
+```
+
+### Task 9: Новый черновик по команде и отдельный текстовый блок опыта
+
+**Файлы:**
+
+- Изменить: `backend/src/cv_backend/storage/repositories/drafts.py`, `backend/src/cv_backend/api/routes/resume_drafts.py`.
+- Изменить: `backend/tests/api/test_resume_profiles.py`, `backend/tests/api/test_profile_creation_flow.py`.
+- Изменить: `frontend/src/services/resume-profiles.ts`, `frontend/src/services/resume-profiles.test.ts`.
+- Изменить: `frontend/src/features/resumeProfiles/ResumeProfilesPage.tsx`, `ResumeProfilesPage.test.tsx`.
+
+**Интерфейсы:**
+
+- `DraftRepository.create_empty(owner_id: UUID) -> ResumeDraftModel`.
+- `DraftRepository.add_experience_block(owner_id: UUID, draft_id: UUID, text: str) -> DraftBlockModel | None`; порядковый номер — следующий после последнего блока.
+- Удалить `POST /api/v1/resume-drafts/text`; добавить `POST /api/v1/resume-drafts` и `POST /api/v1/resume-drafts/{draft_id}/experience-blocks`.
+- Frontend API предоставляет `listDrafts(): Promise<ResumeDraft[]>`, `createDraft(): Promise<ResumeDraft>` и `addExperienceBlock(draftId: string, text: string): Promise<ResumeDraft>`.
+
+- [ ] **Шаг 1: написать падающие API и UI тесты**
+
+Добавить API тест, который фиксирует семантику нового endpoint:
+
+```python
+created = client.post("/api/v1/resume-drafts")
+draft_id = created.json()["draft_id"]
+assert created.status_code == 201
+assert created.json()["blocks"] == []
+
+added = client.post(
+    f"/api/v1/resume-drafts/{draft_id}/experience-blocks",
+    json={"text": "Руководил командой QA"},
+)
+assert added.status_code == 200
+assert [(b["kind"], b["text"], b["ordinal"]) for b in added.json()["blocks"]] == [
+    ("experience", "Руководил командой QA", 0)
+]
+```
+
+UI tests verify that «Создать черновик» creates and displays an empty draft, saved drafts are loaded in the list after page reload, and entering text produces one `experience` block without creating another draft. Foreign, missing or soft-deleted drafts reject block creation.
+
+- [ ] **Шаг 2: запустить тесты до реализации**
+
+Запуски: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/api/test_resume_profiles.py -q`; `Set-Location frontend; npm test -- resume-profiles.test.ts ResumeProfilesPage.test.tsx`.
+Ожидание: новые проверки падают на несуществующих endpoints/API-методах и кнопке.
+
+- [ ] **Шаг 3: реализовать endpoints и repository methods**
+
+Создание через кнопку создаёт пустой сохраняемый draft. Текстовый endpoint требует существующий owned draft, создаёт только один typed `experience` block и не запускает разбор резюме/LLM. Удалить старый маршрут импорта текста и скорректировать существующие тесты/клиент, чтобы текст сам не создавал draft.
+
+- [ ] **Шаг 4: подключить UI к backend**
+
+Добавить кнопку «Создать черновик» и отдельную форму «Добавить блок опыта» в контексте созданного/выбранного черновика. Не отправлять введённый текст через import flow; после сохранения показать обновлённые блоки ответа backend. Ошибки API отображать существующим `role="alert"`.
+
+- [ ] **Шаг 5: проверить и зафиксировать**
+
+Запуски: фокусные backend/frontend тесты, затем полные `pytest` и `npm test`.
+
+```powershell
+git add backend/src/cv_backend backend/tests frontend/src/services/resume-profiles* frontend/src/features/resumeProfiles
+git commit -m "feat: create drafts explicitly and add experience blocks"
+```
+
+### Task 10: Ошибка импорта файла в API и интерфейсе
+
+**Файлы:**
+
+- Изменить: `backend/src/cv_backend/api/routes/resume_drafts.py`, `backend/tests/api/test_resume_profiles.py`.
+- Изменить: `frontend/src/services/resume-profiles.ts`, `frontend/src/services/resume-profiles.test.ts`, `frontend/src/features/resumeProfiles/ResumeProfilesPage.tsx`, `ResumeProfilesPage.test.tsx`.
+- Изменить: `docs/requirements/traceability.md`, `docs/progress.md`, `docs/operations/backend.md`.
+
+- [ ] **Шаг 1: добавить отказные тесты**
+
+Для повреждённого PDF, файла без извлекаемого текста и неподдерживаемого формата проверить ошибочный HTTP-ответ без созданного draft. Повторная успешная загрузка того же файла должна вернуть иной `draft_id`. В frontend service извлечь безопасное `detail` из API ответа; UI показывает понятный текст в `role="alert"` и не заменяет ранее выбранный draft ошибочным/пустым объектом.
+
+- [ ] **Шаг 2: запустить тесты до изменения кода**
+
+Запуски: backend focus на file API и `Set-Location frontend; npm test -- resume-profiles.test.ts ResumeProfilesPage.test.tsx`.
+Ожидание: падает UI проверка, поскольку клиент сейчас скрывает backend `detail` за общим текстом ошибки.
+
+- [ ] **Шаг 3: реализовать прямой отказ без создания черновика**
+
+API возвращает существующий структурированный статус и безопасную причину ошибки; транзакция создания draft начинается только после успешного извлечения текста и формирования блоков. Frontend показывает понятную причину, не выводя извлечённый текст или персональные данные.
+
+- [ ] **Шаг 4: выполнить полные проверки и обновить трассировку**
+
+Запуски: полный backend `pytest`; полный frontend `npm test` и `npm run build`; из корня — Python `scripts/check_docs.py` и `git diff --check`. Обновить REQ-038–REQ-049 по фактически покрытым тестами поведению и записать итоги в `docs/progress.md`.
+
+- [ ] **Шаг 5: выполнить итоговый review и отдельный коммит**
+
+Убедиться, что нет LLM/OCR, исходных файлов/личных данных в базе и фикстурах, hard-delete/cascades, тихого создания draft из текстового ввода или автоматического применения изменений. Проверить миграцию и оба интерфейсных сценария от UI до API.
+
+```powershell
+git add backend frontend docs/requirements/traceability.md docs/progress.md docs/operations/backend.md
+git commit -m "feat: clarify document import failure feedback"
+```
+
 ## Самопроверка плана
 
-- **Покрытие SPEC-005:** импорт текста — Task 2; сохранение/применение черновика — Tasks 3 и 6; PDF/DOCX и удаление временных байтов — Task 5; база кандидата — Task 3; навыки, инструменты и несколько профилей — Task 4; API и изоляция владельца — Task 6; сквозной путь, docs и traceability — Task 7.
-- **Открытые решения:** Q-004, Q-005 и Q-007 являются gate до миграций; Q-008 — gate до реализации файловых форматов; Q-009 — gate до автоматической очистки черновиков. Текстовый парсер и scaffold можно делать независимо.
+- **Покрытие SPEC-005:** предыдущие Tasks 1–7 реализуют базовый контур; Task 8 добавляет мягкое удаление/проверку и migration; Task 9 реализует явное создание и отдельный текстовый блок; Task 10 проверяет ошибку импорта и фронтенд-сообщение.
+- **Решения:** Q-007/Q-009 отражены в ADR-002; Q-008 отложен, но поддерживаемый PDF/DOCX остаётся в объёме.
 - **Поведение без LLM:** тестами закреплены точные типы заголовков и сохранение неизвестных фрагментов; генерация формулировок в задачах отсутствует.
 - **Целостность профиля:** тесты проверяют отдельные профили, отдельные связи skill/tool, владельца и повторные команды.
-- **Плейсхолдеры:** в плане нет незаполненных задач и неназванных интерфейсов; единственное действие на пользовательское решение — перечисленные decision gates с точными ID открытых вопросов.
+- **TDD и review focus:** каждый оставшийся Task начинается с регрессионных тестов; все пять классов риска из Review Focus закреплены API/storage/UI проверками.
+- **План ожидает review пользователя.** Выполнение по ранее выбранному пользователем способу — агент реализует последовательно в текущей ветке с TDD (`native`); новый выбор способа не требуется, если это обновление плана одобрено.

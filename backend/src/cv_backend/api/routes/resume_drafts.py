@@ -20,10 +20,6 @@ router = APIRouter(prefix="/api/v1", tags=["resume-drafts"])
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
-class TextImport(BaseModel):
-    text: str = Field(min_length=1, max_length=500_000)
-
-
 class DraftBlockResponse(BaseModel):
     id: UUID
     kind: str
@@ -47,6 +43,15 @@ class EditBlockRequest(BaseModel):
     text: str = Field(max_length=100_000)
 
 
+class ExperienceBlockRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=100_000)
+
+
+class DraftListItem(BaseModel):
+    draft_id: UUID
+    state: str
+
+
 def _response(draft) -> DraftResponse:
     return DraftResponse(
         draft_id=draft.id,
@@ -64,16 +69,26 @@ def _response(draft) -> DraftResponse:
     )
 
 
-@router.post("/resume-drafts/text", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
-def import_text(
-    data: TextImport,
+@router.get("/resume-drafts", response_model=list[DraftListItem])
+def list_drafts(
+    state: str | None = None,
+    owner_id: UUID = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session),
+):
+    if state not in (None, "needs_user_review", "partially_applied", "applied", "reviewed"):
+        raise HTTPException(status_code=422, detail="Unsupported draft state")
+    drafts = DraftRepository(session).list(owner_id, state)
+    if state is None:
+        drafts = [draft for draft in drafts if draft.state != "reviewed"]
+    return [DraftListItem(draft_id=draft.id, state=draft.state) for draft in drafts]
+
+
+@router.post("/resume-drafts", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
+def create_draft(
     owner_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_db_session),
 ) -> DraftResponse:
-    blocks = parse_resume_text(data.text)
-    if not blocks:
-        raise HTTPException(status_code=422, detail="Text contains no importable content")
-    draft = DraftRepository(session).create(owner_id, blocks)
+    draft = DraftRepository(session).create_empty(owner_id)
     session.commit()
     return _response(draft)
 
@@ -112,6 +127,46 @@ def get_draft(
     draft = DraftRepository(session).get(owner_id, draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
+    return _response(draft)
+
+
+@router.post("/resume-drafts/{draft_id}/review", response_model=DraftResponse)
+def review_draft(
+    draft_id: UUID,
+    owner_id: UUID = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session),
+) -> DraftResponse:
+    draft = DraftRepository(session).review(owner_id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    session.commit()
+    return _response(draft)
+
+
+@router.delete("/resume-drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_draft(
+    draft_id: UUID,
+    owner_id: UUID = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session),
+) -> None:
+    if not DraftRepository(session).soft_delete(owner_id, draft_id):
+        raise HTTPException(status_code=404, detail="Draft not found")
+    session.commit()
+
+
+@router.post("/resume-drafts/{draft_id}/experience-blocks", response_model=DraftResponse)
+def add_experience_block(
+    draft_id: UUID,
+    data: ExperienceBlockRequest,
+    owner_id: UUID = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session),
+) -> DraftResponse:
+    if not data.text.strip():
+        raise HTTPException(status_code=422, detail="Experience text must not be blank")
+    draft = DraftRepository(session).add_experience_block(owner_id, draft_id, data.text)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    session.commit()
     return _response(draft)
 
 

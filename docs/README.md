@@ -41,11 +41,12 @@ Codex; [корневой README](../README.md) содержит только т�
 | SPEC-002 | [Архитектурное ТЗ сервиса](architecture/system.md) | Поиск вакансий, веб-сервис, API, отклики, MVP |
 | SPEC-003 | [Архитектура опыта](architecture/experience.md) | Факты, специализации, версии под вакансии |
 | SPEC-004 | [Дизайн веб-интерфейса CV Maker](superpowers/specs/2026-09-24-cv-maker-web-interface-design.md) | UX-поток от профиля до подтверждённого отклика |
-| SPEC-005 | [Дизайн backend профилей резюме](superpowers/specs/2026-09-25-resume-profile-backend-design.md) | Черновики импорта без LLM, общая база кандидата и несколько профилей |
+| SPEC-005 | [Дизайн backend профилей резюме](superpowers/specs/2026-09-25-resume-profile-backend-design.md) | Черновики импорта без LLM, общая база кандидата и несколько профилей; редакция 1.3 одобрена |
 | PLAN-001 | [План реализации веб-интерфейса](superpowers/plans/2026-09-24-cv-maker-web-interface-plan.md) | Тестируемые этапы реализации интерфейсного MVP |
-| PLAN-002 | [План backend профилей резюме](superpowers/plans/2026-09-25-resume-profile-backend-plan.md) | Этапы реализации импорта, базы кандидата и профилей |
+| PLAN-002 | [План backend профилей резюме](superpowers/plans/2026-09-25-resume-profile-backend-plan.md) | Редакция 1.2 одобрена пользователем; задачи жизненного цикла выполняются |
 | TRACE-001 | [Реестр критериев](requirements/traceability.md) | Указатели на исходные критерии и инварианты |
 | ADR-001 | [Единое хранение](decisions/ADR-001-documentation.md) | Основание структуры и границы миграции |
+| ADR-002 | [Мягкое удаление и хранение черновиков](decisions/ADR-002-soft-deletion-and-draft-retention.md) | Пользовательское решение для удаления и жизненного цикла черновиков |
 | ARCHIVE-001 | [Архив и происхождение](archive/README.md) | Старые пути, контроль сохранности, Word-копия |
 
 ## Как читать источники совместно

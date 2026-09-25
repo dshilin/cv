@@ -48,6 +48,8 @@ class CandidateItemModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+    is_deleted: Mapped[bool] = mapped_column(default=False, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     base: Mapped[CandidateBaseModel] = relationship(back_populates="items")
     versions: Mapped[list["CandidateItemVersionModel"]] = relationship(

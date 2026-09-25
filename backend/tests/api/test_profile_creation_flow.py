@@ -1,11 +1,16 @@
 def test_end_to_end_profile_creation_keeps_drafts_user_controlled_and_profiles_independent(client):
-    draft_response = client.post(
-        "/api/v1/resume-drafts/text",
-        json={"text": "Навыки\nPython\nИнструменты\nDocker"},
-    )
+    draft_response = client.post("/api/v1/resume-drafts")
     assert draft_response.status_code == 201
-    draft = draft_response.json()
-    skills_block, tools_block = draft["blocks"]
+    draft = client.post(
+        f"/api/v1/resume-drafts/{draft_response.json()['draft_id']}/experience-blocks",
+        json={"text": "Used Python in QA automation"},
+    ).json()
+    skills_block = draft["blocks"][0]
+    draft = client.post(
+        f"/api/v1/resume-drafts/{draft['draft_id']}/experience-blocks",
+        json={"text": "Used Docker in QA automation"},
+    ).json()
+    tools_block = draft["blocks"][1]
     assert client.get("/api/v1/candidate-base/items").json() == []
 
     edited = client.patch(

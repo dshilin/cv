@@ -69,7 +69,8 @@ class DraftService:
                     .where(DraftApplicationModel.draft_id == draft_id)
                 ) or 0
                 block_count = len(draft.blocks)
-                draft.state = "applied" if applied_count >= block_count else "partially_applied"
+                if draft.state != "reviewed":
+                    draft.state = "applied" if applied_count >= block_count else "partially_applied"
             self.session.commit()
             return created
         except Exception:

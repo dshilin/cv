@@ -24,7 +24,7 @@ class ResumeDraftModel(Base):
     __tablename__ = "resume_drafts"
     __table_args__ = (
         CheckConstraint(
-            "state IN ('needs_user_review', 'partially_applied', 'applied')",
+            "state IN ('needs_user_review', 'partially_applied', 'applied', 'reviewed')",
             name="ck_resume_drafts_state",
         ),
     )
@@ -36,6 +36,8 @@ class ResumeDraftModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+    is_deleted: Mapped[bool] = mapped_column(default=False, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     blocks: Mapped[list["DraftBlockModel"]] = relationship(
         back_populates="draft",

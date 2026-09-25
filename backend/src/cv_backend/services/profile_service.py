@@ -67,17 +67,19 @@ class ProfileService:
         return self._view(profile)
 
     def delete(self, owner_id: UUID, profile_id: UUID) -> bool:
-        profile = self.repository.get(owner_id, profile_id)
-        if profile is None:
+        if not self.repository.soft_delete(owner_id, profile_id):
             return False
-        self.repository.delete(profile)
         self.session.commit()
         return True
 
-    @staticmethod
-    def _view(profile) -> ProfileView:
+    def _view(self, profile) -> ProfileView:
         grouped: dict[str, list[UUID]] = {"candidate": [], "skill": [], "tool": []}
+        visible_ids = self.repository.visible_item_ids(
+            profile.owner_id, [selection.item_id for selection in profile.selections]
+        )
         for selection in profile.selections:
+            if selection.item_id not in visible_ids:
+                continue
             grouped[selection.category].append(selection.item_id)
         return ProfileView(
             id=profile.id,

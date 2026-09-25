@@ -1,7 +1,7 @@
 import os
+from uuid import UUID
 
-from fastapi import FastAPI
-from fastapi import Depends
+from fastapi import FastAPI, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from cv_backend.api.dependencies import get_current_user_id, get_db_session
 from cv_backend.api.routes.profiles import router as profiles_router
 from cv_backend.api.routes.resume_drafts import router as resume_drafts_router
 from cv_backend.storage.models.candidate import CandidateItemModel
+from cv_backend.storage.repositories.candidate import CandidateRepository
 from cv_backend.storage.database import build_engine
 
 
@@ -31,12 +32,26 @@ def create_app() -> FastAPI:
         owner_id=Depends(get_current_user_id), session: Session = Depends(get_db_session)
     ) -> list[dict[str, object]]:
         items = session.scalars(
-            select(CandidateItemModel).where(CandidateItemModel.owner_id == owner_id)
+            select(CandidateItemModel).where(
+                CandidateItemModel.owner_id == owner_id,
+                CandidateItemModel.is_deleted.is_(False),
+            )
         ).all()
         return [
             {"id": item.id, "kind": item.item_type, "status": item.status, **item.payload}
             for item in items
         ]
+
+    @app.delete("/api/v1/candidate-base/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["candidate-base"])
+    def delete_candidate_item(
+        item_id: UUID,
+        owner_id=Depends(get_current_user_id),
+        session: Session = Depends(get_db_session),
+    ) -> Response:
+        if not CandidateRepository(session).soft_delete_item(owner_id, item_id):
+            raise HTTPException(status_code=404, detail="Candidate item not found")
+        session.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @app.get("/health", tags=["health"])
     def health() -> dict[str, str]:

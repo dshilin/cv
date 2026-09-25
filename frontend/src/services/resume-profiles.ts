@@ -18,6 +18,8 @@ export type ResumeDraft = {
   blocks: { id: string; kind: string; heading: string | null; text: string; ordinal: number }[]
 }
 
+export type ResumeDraftSummary = Pick<ResumeDraft, 'draft_id' | 'state'>
+
 export function createResumeProfileApi(baseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api/v1') {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const isForm = init?.body instanceof FormData
@@ -36,7 +38,8 @@ export function createResumeProfileApi(baseUrl = import.meta.env.VITE_API_BASE_U
     create: (name: string) => request<ResumeProfile>('/profiles', { method: 'POST', body: JSON.stringify({ name }) }),
     update: (id: string, patch: Partial<Pick<ResumeProfile, 'name' | 'headline' | 'summary' | 'target_roles' | 'search_preferences' | 'section_order'>>) =>
       request<ResumeProfile>(`/profiles/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
-    importText: (text: string) => request<ResumeDraft>('/resume-drafts/text', { method: 'POST', body: JSON.stringify({ text }) }),
+    listDrafts: () => request<ResumeDraftSummary[]>('/resume-drafts'),
+    createDraft: () => request<ResumeDraft>('/resume-drafts', { method: 'POST' }),
     importFile: (file: File) => {
       const data = new FormData()
       data.append('file', file)
@@ -45,5 +48,9 @@ export function createResumeProfileApi(baseUrl = import.meta.env.VITE_API_BASE_U
     editBlock: (draftId: string, blockId: string, text: string) => request<ResumeDraft>(
       `/resume-drafts/${draftId}/blocks/${blockId}`, { method: 'PATCH', body: JSON.stringify({ text }) },
     ),
+    addExperienceBlock: (draftId: string, text: string) => request<ResumeDraft>(
+      `/resume-drafts/${draftId}/experience-blocks`, { method: 'POST', body: JSON.stringify({ text }) },
+    ),
+    getDraft: (draftId: string) => request<ResumeDraft>(`/resume-drafts/${draftId}`),
   }
 }

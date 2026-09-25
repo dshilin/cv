@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -22,20 +23,39 @@ class ProfileRepository:
     def get(self, owner_id: UUID, profile_id: UUID) -> SpecializationProfileModel | None:
         return self.session.scalar(
             select(SpecializationProfileModel)
-            .where(SpecializationProfileModel.owner_id == owner_id, SpecializationProfileModel.id == profile_id)
+            .where(
+                SpecializationProfileModel.owner_id == owner_id,
+                SpecializationProfileModel.id == profile_id,
+                SpecializationProfileModel.is_deleted.is_(False),
+            )
             .options(selectinload(SpecializationProfileModel.selections))
         )
 
     def list(self, owner_id: UUID) -> list[SpecializationProfileModel]:
         return list(self.session.scalars(
             select(SpecializationProfileModel)
-            .where(SpecializationProfileModel.owner_id == owner_id)
+            .where(
+                SpecializationProfileModel.owner_id == owner_id,
+                SpecializationProfileModel.is_deleted.is_(False),
+            )
             .options(selectinload(SpecializationProfileModel.selections))
             .order_by(SpecializationProfileModel.created_at, SpecializationProfileModel.id)
         ).all())
 
-    def delete(self, profile: SpecializationProfileModel) -> None:
-        self.session.delete(profile)
+    def soft_delete(self, owner_id: UUID, profile_id: UUID) -> bool:
+        profile = self.session.scalar(
+            select(SpecializationProfileModel).where(
+                SpecializationProfileModel.owner_id == owner_id,
+                SpecializationProfileModel.id == profile_id,
+            )
+        )
+        if profile is None:
+            return False
+        if not profile.is_deleted:
+            profile.is_deleted = True
+            profile.deleted_at = datetime.now(timezone.utc)
+        self.session.flush()
+        return True
 
     def replace_selections(
         self, profile: SpecializationProfileModel, grouped_ids: dict[str, list[UUID]]
@@ -55,5 +75,19 @@ class ProfileRepository:
             select(CandidateItemModel).where(
                 CandidateItemModel.owner_id == owner_id,
                 CandidateItemModel.id.in_(ids),
+                CandidateItemModel.is_deleted.is_(False),
             )
         ).all())
+
+    def visible_item_ids(self, owner_id: UUID, ids: list[UUID]) -> set[UUID]:
+        if not ids:
+            return set()
+        return set(
+            self.session.scalars(
+                select(CandidateItemModel.id).where(
+                    CandidateItemModel.owner_id == owner_id,
+                    CandidateItemModel.id.in_(ids),
+                    CandidateItemModel.is_deleted.is_(False),
+                )
+            ).all()
+        )
