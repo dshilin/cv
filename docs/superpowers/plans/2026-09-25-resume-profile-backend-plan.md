@@ -481,7 +481,7 @@ git diff --check
 - `POST /api/v1/resume-drafts/{draft_id}/review` явно завершает проверку, draft остаётся в БД и уходит из очереди. Поддержать выбор `state=reviewed` в списке, чтобы сохранённый draft можно было снова открыть.
 - DELETE endpoints для draft, candidate item и profile только выставляют tombstone-поля. Обычные list/get исключают удалённые записи; версии, блоки, application records и selections не каскадно удаляются.
 
-- [ ] **Шаг 1: написать storage/API тесты мягкого удаления и жизненного цикла**
+- [x] **Шаг 1: написать storage/API тесты мягкого удаления и жизненного цикла**
 
 Добавить, среди прочих, проверки с такими результатами:
 
@@ -499,23 +499,23 @@ assert any(row["draft_id"] == draft_id for row in client.get("/api/v1/resume-dra
 
 Storage assertions additionally verify `deleted_at`, versions, draft blocks, application rows and selections remain; deleted items cannot be selected for profiles. Direct GET of a deleted resource returns 404. Repeat deletion is safe.
 
-- [ ] **Шаг 2: запустить новые тесты и проверить ожидаемый отказ**
+- [x] **Шаг 2: запустить новые тесты и проверить ожидаемый отказ**
 
 Запуски: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage tests/api/test_resume_profiles.py -q`.
 Ожидание: новые тесты падают из-за отсутствующих tombstone-полей, фильтров и review endpoint.
 
-- [ ] **Шаг 3: реализовать модели, репозитории, API и миграцию минимальным диффом**
+- [x] **Шаг 3: реализовать модели, репозитории, API и миграцию минимальным диффом**
 
 Добавить `is_deleted=false` и nullable `deleted_at` к `ResumeDraftModel`, `CandidateItemModel`, `SpecializationProfileModel`; расширить draft state check на `reviewed`; не добавлять удаление к историческим версиям/связям. Создать Alembic migration с upgrade/downgrade, применить и откатить её на чистой SQLite тестовой БД, затем повторно применить. Если PostgreSQL доступен в проверочной среде, проверить upgrade/downgrade и там; если нет, отметить ограничение в progress. Обновить repository queries, так что пользовательские list/get фильтруют `is_deleted=false`. Soft-delete не изменяет статус факта и не удаляет relations. Фильтровать удалённые элементы при чтении/сборке профиля и отклонять их при новых selections. При `review` установить state `reviewed`; последующее применение блока не должно возвращать черновик в очередь.
 
-- [ ] **Шаг 4: запустить фокусные и полные backend тесты**
+- [x] **Шаг 4: запустить фокусные и полные backend тесты**
 
 Запуски: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/storage tests/api -q`, затем полный `pytest`. Ожидание: все tombstone, ownership, review queue, migration и прежние сценарии проходят.
 
-- [ ] **Шаг 5: зафиксировать отдельный этап**
+- [x] **Шаг 5: зафиксировать этап** — вместе с задачами 9–10 из-за общих API-маршрутов и тестовых файлов; коммит `0bee569`.
 
 ```powershell
-git add backend/src/cv_backend/storage backend/src/cv_backend/services backend/src/cv_backend/api backend/alembic backend/tests
+git add backend/src/cv_backend/storage backend/src/cv_backend/services backend/src/cv_backend/api backend/migrations backend/tests
 git commit -m "feat: add soft deletion and draft review lifecycle"
 ```
 
@@ -535,7 +535,7 @@ git commit -m "feat: add soft deletion and draft review lifecycle"
 - Удалить `POST /api/v1/resume-drafts/text`; добавить `POST /api/v1/resume-drafts` и `POST /api/v1/resume-drafts/{draft_id}/experience-blocks`.
 - Frontend API предоставляет `listDrafts(): Promise<ResumeDraft[]>`, `createDraft(): Promise<ResumeDraft>` и `addExperienceBlock(draftId: string, text: string): Promise<ResumeDraft>`.
 
-- [ ] **Шаг 1: написать падающие API и UI тесты**
+- [x] **Шаг 1: написать падающие API и UI тесты**
 
 Добавить API тест, который фиксирует семантику нового endpoint:
 
@@ -557,20 +557,20 @@ assert [(b["kind"], b["text"], b["ordinal"]) for b in added.json()["blocks"]] ==
 
 UI tests verify that «Создать черновик» creates and displays an empty draft, saved drafts are loaded in the list after page reload, and entering text produces one `experience` block without creating another draft. Foreign, missing or soft-deleted drafts reject block creation.
 
-- [ ] **Шаг 2: запустить тесты до реализации**
+- [x] **Шаг 2: запустить тесты до реализации**
 
 Запуски: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/api/test_resume_profiles.py -q`; `Set-Location frontend; npm test -- resume-profiles.test.ts ResumeProfilesPage.test.tsx`.
 Ожидание: новые проверки падают на несуществующих endpoints/API-методах и кнопке.
 
-- [ ] **Шаг 3: реализовать endpoints и repository methods**
+- [x] **Шаг 3: реализовать endpoints и repository methods**
 
 Создание через кнопку создаёт пустой сохраняемый draft. Текстовый endpoint требует существующий owned draft, создаёт только один typed `experience` block и не запускает разбор резюме/LLM. Удалить старый маршрут импорта текста и скорректировать существующие тесты/клиент, чтобы текст сам не создавал draft.
 
-- [ ] **Шаг 4: подключить UI к backend**
+- [x] **Шаг 4: подключить UI к backend**
 
 Добавить кнопку «Создать черновик» и отдельную форму «Добавить блок опыта» в контексте созданного/выбранного черновика. Не отправлять введённый текст через import flow; после сохранения показать обновлённые блоки ответа backend. Ошибки API отображать существующим `role="alert"`.
 
-- [ ] **Шаг 5: проверить и зафиксировать**
+- [x] **Шаг 5: проверить и зафиксировать** — общий feature-коммит `0bee569`.
 
 Запуски: фокусные backend/frontend тесты, затем полные `pytest` и `npm test`.
 
@@ -587,24 +587,24 @@ git commit -m "feat: create drafts explicitly and add experience blocks"
 - Изменить: `frontend/src/services/resume-profiles.ts`, `frontend/src/services/resume-profiles.test.ts`, `frontend/src/features/resumeProfiles/ResumeProfilesPage.tsx`, `ResumeProfilesPage.test.tsx`.
 - Изменить: `docs/requirements/traceability.md`, `docs/progress.md`, `docs/operations/backend.md`.
 
-- [ ] **Шаг 1: добавить отказные тесты**
+- [x] **Шаг 1: добавить отказные тесты**
 
 Для повреждённого PDF, файла без извлекаемого текста и неподдерживаемого формата проверить ошибочный HTTP-ответ без созданного draft. Повторная успешная загрузка того же файла должна вернуть иной `draft_id`. В frontend service извлечь безопасное `detail` из API ответа; UI показывает понятный текст в `role="alert"` и не заменяет ранее выбранный draft ошибочным/пустым объектом.
 
-- [ ] **Шаг 2: запустить тесты до изменения кода**
+- [x] **Шаг 2: запустить тесты до изменения кода**
 
 Запуски: backend focus на file API и `Set-Location frontend; npm test -- resume-profiles.test.ts ResumeProfilesPage.test.tsx`.
 Ожидание: падает UI проверка, поскольку клиент сейчас скрывает backend `detail` за общим текстом ошибки.
 
-- [ ] **Шаг 3: реализовать прямой отказ без создания черновика**
+- [x] **Шаг 3: реализовать прямой отказ без создания черновика**
 
 API возвращает существующий структурированный статус и безопасную причину ошибки; транзакция создания draft начинается только после успешного извлечения текста и формирования блоков. Frontend показывает понятную причину, не выводя извлечённый текст или персональные данные.
 
-- [ ] **Шаг 4: выполнить полные проверки и обновить трассировку**
+- [x] **Шаг 4: выполнить полные проверки и обновить трассировку**
 
 Запуски: полный backend `pytest`; полный frontend `npm test` и `npm run build`; из корня — Python `scripts/check_docs.py` и `git diff --check`. Обновить REQ-038–REQ-049 по фактически покрытым тестами поведению и записать итоги в `docs/progress.md`.
 
-- [ ] **Шаг 5: выполнить итоговый review и отдельный коммит**
+- [x] **Шаг 5: выполнить итоговый self-review и зафиксировать** — свежий ревью-субагент недоступен в этой среде; общий коммит `0bee569`.
 
 Убедиться, что нет LLM/OCR, исходных файлов/личных данных в базе и фикстурах, hard-delete/cascades, тихого создания draft из текстового ввода или автоматического применения изменений. Проверить миграцию и оба интерфейсных сценария от UI до API.
 
