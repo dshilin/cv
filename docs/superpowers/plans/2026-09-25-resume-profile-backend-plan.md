@@ -1,9 +1,9 @@
 ---
 id: PLAN-002
-status: draft
-version: 0.1
-owner: Агент-разработчик — подготовка плана; исполнитель реализации не назначен
-approved_by: Ожидает review плана пользователем
+status: approved
+version: 1.1
+owner: Backend-разработчик (роль; персональное назначение отсутствует)
+approved_by: Пользователь — поручение начать реализацию «пиши реализацию первую как сам понимаешь согласно всех необходимых нюансов включая TDD», чат 2026-09-25
 last_reviewed: 2026-09-25
 scope: Поэтапная реализация SPEC-005 в backend-модуле
 ---
@@ -338,21 +338,24 @@ git commit -m "feat: add independent resume specialization profiles"
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_upload_temp.py tests/unit/test_document_extractor.py -q`
 Ожидание: PASS; после тестов нет файлов в temp-каталоге, а нераспознанный текст не теряется.
 
-### Task 6: API черновиков, общей базы и профилей
+### Task 6: API черновиков, общей базы, профилей и frontend-подключение
 
 **Файлы:**
 
 - Создать: `backend/src/cv_backend/api/routes/resume_drafts.py`, `backend/src/cv_backend/api/routes/candidate_base.py`, `backend/src/cv_backend/api/routes/profiles.py`
 - Создать: `backend/tests/api/test_resume_drafts.py`, `backend/tests/api/test_candidate_base.py`, `backend/tests/api/test_profiles.py`
 - Изменить: `backend/src/cv_backend/app.py`, `backend/src/cv_backend/api/dependencies.py`
+- Создать: frontend API-клиент, его тесты, страницу управления специализационными профилями и её тесты.
+- Изменить: `frontend/src/app/router.tsx`, `frontend/src/app/AppShell.tsx`; продуктивный путь профилей работает через backend, fixtures остаются только в тестах.
 
 **Интерфейсы:**
 
 - Реализовать маршруты из SPEC-005 §5 без изменения их семантики.
 - Ошибки валидации возвращают структурированные `422`; неподдерживаемый тип — `415`, превышение размера — `413`, повреждённый или нечитаемый документ — `422`; чужой ресурс — `404`.
 - Ответ импорта содержит `draft_id`, список блоков и состояние `needs_user_review`.
+- Для локальной интеграции без OAuth использовать только явно включаемую dev identity; она недоступна в production.
 
-- [ ] **Шаг 1: написать API-тесты с подменёнными account IDs**
+- [ ] **Шаг 1: написать API-тесты с подменёнными account IDs и тесты frontend API-клиента**
 
 ```python
 def test_user_cannot_read_another_users_draft(client_factory, draft_factory):
@@ -383,7 +386,7 @@ def test_import_only_creates_draft_until_user_applies_block(client, db_session):
 - [ ] **Шаг 4: проверить API, транзакции и ошибки**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/api -q`
-Ожидание: PASS для CRUD, изоляции пользователей, отсутствия побочных изменений при импорте, повтора команды, ошибок файлов и атомарности профильных выборок.
+Ожидание: PASS для CRUD, изоляции пользователей, отсутствия побочных изменений при импорте, повтора команды, ошибок файлов и атомарности профильных выборок. Frontend подтверждает запросы к API и отображение ответа без fixture-источника в продуктовом пути.
 
 - [ ] **Шаг 5: зафиксировать этап**
 
