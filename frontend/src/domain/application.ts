@@ -15,6 +15,7 @@ export type ApplicationPackage = {
   id: string
   jobId: string
   documents: GeneratedDocument[]
+  selectedFactIds: string[]
   usedFacts: ProfileFact[]
   warnings: Warning[]
   blockers: ApplicationBlocker[]

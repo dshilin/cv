@@ -219,7 +219,7 @@ export function createFixtureApplicationService(profileService: ProfileService, 
         { kind: 'explanation', title: 'Объяснение соответствия', content: factLines.length ? `Подтверждённые факты для ${job.title}: ${factLines.join(', ')}.` : 'Подтверждённых фактов для сопоставления пока нет.', usedFactIds },
       ]
       const pkg: ApplicationPackage = {
-        id, jobId: job.id, documents, usedFacts,
+        id, jobId: job.id, documents, selectedFactIds: [...profile.resumeFactIds], usedFacts,
         warnings: job.gaps.map((message, index) => ({ id: `gap-${index}`, message })),
         blockers: blocked.map(({ fact, factId }) => ({ kind: 'fact', factId, message: `Подтвердите выбранный факт: ${fact?.value || factId}` })),
         sendState: 'draft',
@@ -241,11 +241,13 @@ export function createFixtureApplicationService(profileService: ProfileService, 
       if (previous) return structuredClone(previous)
       if (pkg.sendState === 'sent') throw new Error('Application already sent')
       const currentProfile = await profileService.load()
+      const selectionUnchanged = currentProfile.resumeFactIds.length === pkg.selectedFactIds.length &&
+        currentProfile.resumeFactIds.every((factId, index) => factId === pkg.selectedFactIds[index])
       const factsStillConfirmed = pkg.usedFacts.every((fact) => {
         const current = currentProfile.facts.find((item) => item.id === fact.id)
         return current?.status === 'confirmed' && current.value === fact.value && current.provenance === fact.provenance
       })
-      if (!factsStillConfirmed || !canSendApplication(pkg)) throw new Error('Application send is blocked')
+      if (!selectionUnchanged || !factsStillConfirmed || !canSendApplication(pkg)) throw new Error('Application send is blocked')
       const result: SendResult = { applicationId: id, jobId: pkg.jobId, status: 'sent', receiptId: `fixture-${id}` }
       results.set(resultKey, result)
       pkg.sendState = 'sent'
