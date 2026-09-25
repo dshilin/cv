@@ -84,7 +84,7 @@ scope: Поэтапная реализация SPEC-005 в backend-модуле
 - Предоставить `get_current_user_id() -> UUID` как заменяемую FastAPI dependency; production provider не реализовывать.
 - Предоставить `/health` с ответом `{"status": "ok"}` без персональных данных.
 
-- [ ] **Шаг 1: написать падающий smoke-тест приложения**
+- [x] **Шаг 1: написать падающий smoke-тест приложения**
 
 ```python
 from fastapi.testclient import TestClient
@@ -96,29 +96,29 @@ def test_health_returns_ok():
     assert response.json() == {"status": "ok"}
 ```
 
-- [ ] **Шаг 2: установить только тестовый инструмент и необходимые библиотеки**
+- [x] **Шаг 2: установить только тестовый инструмент и необходимые библиотеки**
 
 Создать изолированное окружение и установить минимальный тестовый стек: `Set-Location backend; python -m venv .venv; & .\.venv\Scripts\python.exe -m pip install pytest fastapi httpx`. Не устанавливать пакеты глобально.
 
-- [ ] **Шаг 3: убедиться, что тест падает до реализации**
+- [x] **Шаг 3: убедиться, что тест падает до реализации**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/api/test_health.py -q`
 Ожидание: импорт `cv_backend` завершается ошибкой, так как пакет приложения ещё отсутствует.
 
-- [ ] **Шаг 4: создать минимальный пакет и API-приложение**
+- [x] **Шаг 4: создать минимальный пакет и API-приложение**
 
 В `pyproject.toml` объявить Python 3.12+, FastAPI, Pydantic, SQLAlchemy, Alembic и pytest/HTTPX для разработки. Выполнить `Set-Location backend; & .\.venv\Scripts\python.exe -m pip install -e ".[dev]"`. В `app.py` создать приложение и маршрут `/health`. В `conftest.py` задать временную SQLite базу и подмену `get_current_user_id` через FastAPI dependency overrides; не добавлять реального OAuth.
 
-- [ ] **Шаг 5: проверить smoke-тест и импорт пакета**
+- [x] **Шаг 5: проверить smoke-тест и импорт пакета**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/api/test_health.py -q`
 Ожидание: PASS.
 
-- [ ] **Шаг 6: обновить документацию запуска и зафиксировать этап**
+- [x] **Шаг 6: обновить документацию запуска и зафиксировать этап**
 
 Добавить в `docs/operations/backend.md` реквизиты DOC-006 и инструкции установки dev-зависимостей, миграций, тестов и локального старта API. Зарегистрировать DOC-006 в `docs/README.md`; отразить начало backend в `docs/progress.md`. Выполнить `python scripts/check_docs.py` из корня.
 
-- [ ] **Шаг 7: зафиксировать основу backend**
+- [x] **Шаг 7: зафиксировать основу backend**
 
 ```powershell
 git add backend docs/README.md docs/progress.md docs/operations/backend.md
@@ -139,7 +139,7 @@ git commit -m "feat: scaffold resume profile backend"
 - `parse_resume_text(text: str) -> list[DraftBlockInput]` — чистая функция, без сети, файловой системы и LLM.
 - `kind` принимает только перечисленные типы: `basics`, `preferences`, `experience`, `projects`, `skills`, `tools`, `education`, `certifications`, `languages`, `additional`, `unparsed`.
 
-- [ ] **Шаг 1: написать тесты на секции и сохранение неизвестного текста**
+- [x] **Шаг 1: написать тесты на секции и сохранение неизвестного текста**
 
 ```python
 from cv_backend.services.text_parser import parse_resume_text
@@ -159,21 +159,21 @@ def test_parser_rejects_empty_input():
     assert parse_resume_text(" \n\t") == []
 ```
 
-- [ ] **Шаг 2: выполнить тест до реализации**
+- [x] **Шаг 2: выполнить тест до реализации**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_text_parser.py -q`
 Ожидание: FAIL, модуль парсера отсутствует.
 
-- [ ] **Шаг 3: реализовать правила заголовков и блок `unparsed`**
+- [x] **Шаг 3: реализовать правила заголовков и блок `unparsed`**
 
 Использовать таблицу явных русских и английских заголовков с нормализацией регистра, пробелов и завершающего двоеточия (например, `Инструменты:`). Сохранять текст каждого блока дословно, исходный порядок и неизвестные разделы. Не выводить факты, роли или навыки из свободного текста. Пустой вход возвращает пустой список. Представить `DraftBlockInput` как frozen dataclass, чтобы поля из интерфейса соответствовали тестам `block.kind` и `block.text`.
 
-- [ ] **Шаг 4: проверить тесты парсера и граничные входы**
+- [x] **Шаг 4: проверить тесты парсера и граничные входы**
 
 Запуск: `Set-Location backend; & .\.venv\Scripts\python.exe -m pytest tests/unit/test_text_parser.py -q`
 Ожидание: PASS для пустого ввода, повторяющихся заголовков, CRLF/LF, неизвестных разделов и разделения навыков/инструментов.
 
-- [ ] **Шаг 5: зафиксировать этап**
+- [x] **Шаг 5: зафиксировать этап**
 
 ```powershell
 git add backend/src/cv_backend/domain/drafts.py backend/src/cv_backend/services/text_parser.py backend/tests/unit/test_text_parser.py
