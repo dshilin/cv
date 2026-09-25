@@ -8,6 +8,7 @@ from cv_backend.storage.models.draft import (
     DraftBlockModel,
     ResumeDraftModel,
 )
+from cv_backend.storage.models.profile import ProfileItemSelectionModel, SpecializationProfileModel
 
 __all__ = [
     "CandidateBaseModel",
@@ -16,4 +17,6 @@ __all__ = [
     "DraftApplicationModel",
     "DraftBlockModel",
     "ResumeDraftModel",
+    "ProfileItemSelectionModel",
+    "SpecializationProfileModel",
 ]

@@ -7,6 +7,7 @@ import { JobsPage } from '../features/jobs/JobsPage'
 import { JobDetailsPage } from '../features/jobs/JobDetailsPage'
 import { ApplicationReviewPage } from '../features/applications/ApplicationReviewPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { ResumeProfilesPage } from '../features/resumeProfiles/ResumeProfilesPage'
 import { evaluateProfileReadiness } from '../domain/readiness'
 import type { ExperienceProfile } from '../domain/profile'
 import type { ApplicationService, JobService, ProfileService } from '../services/contracts'
@@ -42,6 +43,7 @@ export function AppRoutes({ profileService, jobService, applicationService }: { 
     <Routes>
       <Route element={<AppShell profileService={profileService} />}>
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/resume-profiles" element={<ResumeProfilesPage />} />
         <Route path="/profile/readiness" element={<PlaceholderPage title="Готовность" />} />
         <Route path="/sources" element={<SourcesPage />} />
         <Route path="/search" element={<ReadySearchRoute />} />

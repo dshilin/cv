@@ -7,6 +7,7 @@ import { fixtureProfileService, fixtureSearchService } from '../services/fixture
 
 const navigation = [
   { to: '/profile', label: 'Профиль', end: true },
+  { to: '/resume-profiles', label: 'Профили резюме' },
   { to: '/profile/readiness', label: 'Готовность' },
   { to: '/sources', label: 'Сервисы' },
   { to: '/search', label: 'Поиск' },
@@ -21,16 +22,24 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
   const [searchActive, setSearchActive] = useState(false)
   const location = useLocation()
   useEffect(() => {
+    if (location.pathname.startsWith('/resume-profiles')) {
+      setProfileLoaded(true)
+      return
+    }
     let current = true
     profileService.load().then((loaded) => { if (current) { setProfile(loaded); setProfileLoaded(true) } })
       .catch(() => { if (current) setProfileLoaded(true) })
     return () => { current = false }
-  }, [profileService])
+  }, [location.pathname, profileService])
   useEffect(() => {
+    if (location.pathname.startsWith('/resume-profiles')) {
+      setSearchActive(false)
+      return
+    }
     let current = true
     fixtureSearchService.list().then((profiles) => { if (current) setSearchActive(profiles.some((item) => item.active)) })
     return () => { current = false }
-  }, [location.key])
+  }, [location.key, location.pathname])
   const profileReady = profile ? evaluateProfileReadiness(profile).ready : false
   const pendingActions = Boolean(profile?.facts.some((fact) => fact.status === 'needs_review' || fact.status === 'needs_input') ||
     profile?.questions.some((question) => question.mandatory && !question.resolved))

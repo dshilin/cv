@@ -28,6 +28,7 @@ def database_engine(tmp_path: Path) -> Iterator[Engine]:
 
 @pytest.fixture
 def client(database_engine: Engine) -> Iterator[TestClient]:
+    Base.metadata.create_all(database_engine)
     app = create_app()
     app.state.database_engine = database_engine
     app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
@@ -36,6 +37,7 @@ def client(database_engine: Engine) -> Iterator[TestClient]:
             yield test_client
     finally:
         app.dependency_overrides.clear()
+        Base.metadata.drop_all(database_engine)
 
 
 @pytest.fixture
