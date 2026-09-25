@@ -27,6 +27,7 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
   const profileReady = profile ? evaluateProfileReadiness(profile).ready : false
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#content">Перейти к содержимому</a>
       <aside className="sidebar">
         <div className="brand">CV Maker</div>
         <nav aria-label="Основная навигация">
@@ -43,7 +44,7 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
           <span>Поиск не настроен</span>
           <span>Действий не ожидается</span>
         </header>
-        <main id="content">
+        <main id="content" tabIndex={-1}>
           <Outlet context={{ profileService, onProfileChange: setProfile, profile, profileLoaded }} />
         </main>
       </div>
