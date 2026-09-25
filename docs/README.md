@@ -40,6 +40,7 @@ Codex; [корневой README](../README.md) содержит только т�
 | SPEC-002 | [Архитектурное ТЗ сервиса](architecture/system.md) | Поиск вакансий, веб-сервис, API, отклики, MVP |
 | SPEC-003 | [Архитектура опыта](architecture/experience.md) | Факты, специализации, версии под вакансии |
 | SPEC-004 | [Дизайн веб-интерфейса CV Maker](superpowers/specs/2026-09-24-cv-maker-web-interface-design.md) | UX-поток от профиля до подтверждённого отклика |
+| SPEC-005 | [Дизайн backend профилей резюме](superpowers/specs/2026-09-25-resume-profile-backend-design.md) | Черновики импорта без LLM, общая база кандидата и несколько профилей |
 | PLAN-001 | [План реализации веб-интерфейса](superpowers/plans/2026-09-24-cv-maker-web-interface-plan.md) | Тестируемые этапы реализации интерфейсного MVP |
 | TRACE-001 | [Реестр критериев](requirements/traceability.md) | Указатели на исходные критерии и инварианты |
 | ADR-001 | [Единое хранение](decisions/ADR-001-documentation.md) | Основание структуры и границы миграции |
