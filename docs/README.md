@@ -1,10 +1,10 @@
 ---
 id: DOC-001
 status: active
-version: 1.0
+version: 1.1
 owner: Бизнес-аналитик проекта (роль)
 approved_by: Пользователь — организация документации по запросу в текущем чате
-last_reviewed: 2026-09-24
+last_reviewed: 2026-09-28
 scope: Навигация и реестр всех проектных документов
 ---
 
@@ -37,21 +37,24 @@ Codex; [корневой README](../README.md) содержит только т�
 | DOC-004 | [Шаблоны](governance/templates.md) | Реквизиты, требование, решение, изменение |
 | DOC-005 | [Состояние проекта](progress.md) | Выполненное, проверки, следующий шаг |
 | DOC-006 | [Локальная разработка backend](operations/backend.md) | Установка, тесты и запуск backend профилей |
-| SPEC-001 | [ТЗ CV Maker](requirements/cv-maker.md) | Подготовка резюме и письма через специализированный GPT |
+| SPEC-001 | [ТЗ подготовки отклика](requirements/cv-maker.md) | Подготовка и проверка резюме и письма под вакансию через подключённый LLM API |
 | SPEC-002 | [Архитектурное ТЗ сервиса](architecture/system.md) | Поиск вакансий, веб-сервис, API, отклики, MVP |
 | SPEC-003 | [Архитектура опыта](architecture/experience.md) | Факты, специализации, версии под вакансии |
 | SPEC-004 | [Дизайн веб-интерфейса CV Maker](superpowers/specs/2026-09-24-cv-maker-web-interface-design.md) | UX-поток от профиля до подтверждённого отклика |
 | SPEC-005 | [Дизайн backend профилей резюме](superpowers/specs/2026-09-25-resume-profile-backend-design.md) | Черновики импорта без LLM, общая база кандидата и несколько профилей; редакция 1.3 одобрена |
+| SPEC-006 | [Дизайн backend-интеграции LLM-провайдеров](superpowers/specs/2026-09-28-llm-provider-integration-design.md) | Owner-scoped backend connections и общий текстовый интерфейс OpenAI, OpenAI-compatible, YandexGPT и GigaChat; прикладные сценарии исключены; ожидает review |
 | PLAN-001 | [План реализации веб-интерфейса](superpowers/plans/2026-09-24-cv-maker-web-interface-plan.md) | Тестируемые этапы реализации интерфейсного MVP |
 | PLAN-002 | [План backend профилей резюме](superpowers/plans/2026-09-25-resume-profile-backend-plan.md) | Редакция 1.2 одобрена пользователем; задачи жизненного цикла выполняются |
+| PLAN-003 | [План backend-интеграции LLM](superpowers/plans/2026-09-28-llm-backend-integration-plan.md) | План backend connections и внутреннего gateway по SPEC-006; одобрен пользователем к Native-исполнению |
 | TRACE-001 | [Реестр критериев](requirements/traceability.md) | Указатели на исходные критерии и инварианты |
 | ADR-001 | [Единое хранение](decisions/ADR-001-documentation.md) | Основание структуры и границы миграции |
 | ADR-002 | [Мягкое удаление и хранение черновиков](decisions/ADR-002-soft-deletion-and-draft-retention.md) | Пользовательское решение для удаления и жизненного цикла черновиков |
+| ADR-003 | [Провайдер-независимая интеграция LLM](decisions/ADR-003-llm-provider-adapters.md) | Backend-контракт, provider adapters и пользовательские API credentials; ожидает review |
 | ARCHIVE-001 | [Архив и происхождение](archive/README.md) | Старые пути, контроль сохранности, Word-копия |
 
 ## Как читать источники совместно
 
-SPEC-001 задаёт сценарий работы через CV Maker. SPEC-002 описывает более
+SPEC-001 задаёт сценарий подготовки документов через подключённый LLM API. SPEC-002 описывает более
 широкий сервис. SPEC-003 детализирует фактическую базу опыта. Они не объявлены
 заменами друг друга. Для затронутых расхождений сначала используй реестр
 вопросов; не выбирай приоритет документа по названию или дате файла.

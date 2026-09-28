@@ -23,6 +23,9 @@ def test_initial_migration_upgrades_and_downgrades_schema(tmp_path):
         assert {column["name"] for column in inspector.get_columns("specialization_profiles")} >= {
             "is_deleted", "deleted_at"
         }
+        assert {column["name"] for column in inspector.get_columns("llm_connections")} >= {
+            "owner_id", "provider", "settings", "credentials_ciphertext", "default_model", "status"
+        }
     finally:
         engine.dispose()
 

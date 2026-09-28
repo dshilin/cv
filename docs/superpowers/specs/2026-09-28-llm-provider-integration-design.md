@@ -1,7 +1,7 @@
 ---
 id: SPEC-006
 status: draft
-version: 0.2
+version: 0.3
 owner: Архитектор и владелец продукта (роли; персональное назначение отсутствует)
 approved_by: Границы уточнены пользователем в чате 2026-09-28; письменная спецификация ожидает review
 last_reviewed: 2026-09-28
@@ -88,17 +88,22 @@ API-слой разрешает подключение и вызов тольк�
 
 ### Провайдеры и credentials
 
-- **OpenAI:** официальный API endpoint, модель и API key пользователя.
+- **OpenAI:** официальный API endpoint, модель и API key пользователя. Для
+  текущего Chat Completions API provider adapter передаёт общий лимит
+  `max_tokens` в API-поле `max_completion_tokens`.
 - **OpenAI-compatible:** HTTPS base URL, идентификатор модели и API key.
   Произвольные URL ограничиваются HTTPS; запрещаются loopback, private и
   link-local адреса и небезопасные перенаправления, чтобы закрыть SSRF.
 - **Yandex AI Studio/YandexGPT:** API key сервисного аккаунта, folder ID и
-  model URI. Начальный адаптер использует документированный OpenAI-compatible
-  Chat Completions интерфейс. IAM-токен как отдельный способ credentials не
+  model URI. Базовый URL `https://ai.api.cloud.yandex.net/v1`; используются
+  `Authorization: Api-Key` и `OpenAI-Project`. Model path преобразуется в
+  `gpt://<folder-id>/<model>`. IAM-токен как отдельный способ credentials не
   включён в начальную реализацию.
 - **GigaChat:** ключ авторизации и scope (`PERS`, `B2B` или `CORP`). Адаптер
-  получает краткоживущий access token, кэширует его с учётом срока действия,
-  повторно получает его по необходимости и вызывает текстовый endpoint.
+  получает access token через `https://ngw.devices.sberbank.ru:9443/api/v2/oauth`
+  с `RqUID`, кэширует его только в памяти до срока действия и вызывает
+  `https://api.giga.chat/v1/chat/completions`. Для token exchange используются
+  scope `GIGACHAT_API_PERS`, `GIGACHAT_API_B2B` или `GIGACHAT_API_CORP`.
   Начальный контракт использует только базовые поля Chat Completions,
   совместимые с целевой моделью.
 
@@ -167,11 +172,13 @@ Responses API, несмотря на рекомендацию OpenAI для но
 
 ## Внешняя документация
 
-Проверено 2026-09-28:
+Проверено 2026-09-28; провайдерные endpoint/auth поля перепроверены при
+реализации 2026-09-28:
 
 - [OpenAI Chat Completions](https://platform.openai.com/docs/api-reference/chat/create) — общий текстовый интерфейс; OpenAI рекомендует Responses API для новых приложений.
 - [OpenAI API key safety](https://developers.openai.com/api/docs/guides/production-best-practices) — безопасное хранение ключей.
-- [Yandex AI Studio: базовый Chat Completions запрос](https://aistudio.yandex.ru/ru/docs/ai-studio/operations/generation/completions-basic) — OpenAI SDK, `base_url`, API key и folder ID.
+- [Yandex AI Studio: базовый Chat Completions запрос](https://aistudio.yandex.ru/ru/docs/ai-studio/operations/generation/completions-basic) — endpoint, `Authorization: Api-Key`, `OpenAI-Project`, model URI и параметры текста.
 - [Yandex AI Studio: аутентификация](https://aistudio.yandex.ru/ru/docs/ai-studio/api-ref/authentication) — API key и IAM token.
 - [GigaChat: совместимость с OpenAI](https://developers.sber.ru/docs/ru/gigachat/guides/compatible-openai) — Chat Completions и ограничения совместимости.
-- [GigaChat: авторизация](https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/gigachat-api) — целевой endpoint, scope, RqUID и 30-минутный access token.
+- [GigaChat: авторизация](https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/gigachat-api) — целевой completion endpoint, scope, RqUID и 30-минутный access token.
+- [GigaChat: получение access token](https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/post-token) — обмен auth key на access token.

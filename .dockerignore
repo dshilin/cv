@@ -1,0 +1,11 @@
+.git
+.gitignore
+.superpowers
+.pytest_cache
+backend/.venv
+backend/__pycache__
+backend/tests
+frontend/node_modules
+frontend/dist
+docs/archive
+*.sqlite3

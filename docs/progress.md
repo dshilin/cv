@@ -1,14 +1,91 @@
 ---
 id: DOC-005
 status: active
-version: 1.1
+version: 1.5
 owner: Агент-разработчик — исполнитель текущей задачи
 approved_by: Пользователь — поручение об организации документов
-last_reviewed: 2026-09-24
+last_reviewed: 2026-09-28
 scope: Состояние проекта и передача контекста между задачами
 ---
 
 # Состояние проекта
+
+## Текущая работа 2026-09-28 — backend-интеграция LLM
+
+- Границы [SPEC-006](superpowers/specs/2026-09-28-llm-provider-integration-design.md)
+  подтверждены пользователем: только подключение LLM-провайдеров и общий
+  внутренний backend gateway. Вакансии, подготовка резюме/писем, UI и отправка
+  исключены из этой задачи.
+- Подготовлен [PLAN-003](superpowers/plans/2026-09-28-llm-backend-integration-plan.md)
+  с последовательными этапами для контрактов, шифрования credentials,
+  owner-scoped storage, адаптеров OpenAI/YandexGPT/GigaChat и API проверки.
+  Пользователь выбрал Native execution; задачи плана реализованы.
+- Q-010 о семантике удаления/деактивации секрета остаётся открытым; план
+  исключает соответствующий destructive endpoint до отдельного решения.
+- Production identity отсутствует, поэтому production-доступ к API остаётся
+  закрытым до отдельной реализации аутентификации.
+- Task 1 PLAN-003 выполнен: provider-neutral DTO, категории нормализованных
+  ошибок и внутренний gateway с owner/status gate. Тесты подтвердили отказ до
+  реализации и после неё прошли 13/13. Изменение пока не закоммичено из-за уже
+  присутствующих посторонних незакоммиченных файлов в checkout.
+- Task 2 PLAN-003 выполнен: добавлены AES-256-GCM credentials cipher,
+  fail-closed `CV_LLM_ENCRYPTION_KEY` конфигурация, compose/локальная настройка
+  и эксплуатационная инструкция. Фокусные проверки прошли 4/4 с библиотекой
+  из bundled runtime; установка dependency в backend `.venv` не удалась из-за
+  заблокированной сети, но runtime dependency записан в `pyproject.toml`.
+- Task 3 PLAN-003 выполнен: добавлены owner-scoped LLM connection model,
+  repository и Alembic revision `20260928_0002`; SQLite storage/migration
+  проверки прошли 3/3. PostgreSQL migration в текущем окружении отдельно не
+  запускалась.
+- Task 4 PLAN-003 выполнен: добавлены OpenAI/OpenAI-compatible Chat
+  Completions adapter, error normalization, timeout и DNS-pinned HTTPS
+  transport без redirects. Mocked provider/endpoint suite прошёл 22/22;
+  реальные внешние API не вызывались.
+- Task 5 PLAN-003 выполнен: YandexGPT adapter использует API-key заголовок,
+  folder ID, model URI, общий HTTP transport и нормализованный ответ. Yandex
+  и OpenAI regression suite прошёл 14/14 без сетевых вызовов.
+- Task 6 PLAN-003 выполнен: GigaChat adapter поддерживает три scope, обновляет
+  короткоживущий token с запасом 60 секунд и хранит его только в памяти.
+  Completion проходит через общий safe transport; mock suite прошёл 7/7.
+- Task 7 PLAN-003 выполнен: добавлены owner-scoped `POST/GET /api/v1/llm-connections`
+  и ограниченная `POST /{id}/test`, безопасные DTO, проверка provider-specific
+  полей, encryption wiring и fail-closed dependencies. API тесты подтвердили
+  redaction, cross-owner 404, тест статуса, отсутствие ключа (503) и production
+  identity (401); вместе с gateway/storage прошло 14/14.
+- Task 8 PLAN-003 выполнен: обновлены архитектура, эксплуатационные инструкции,
+  SPEC-006, ADR-003 и traceability REQ-050–053. Добавлен end-to-end gateway
+  check с SQLite + AES-GCM. Финальные проверки после review исправлений:
+  backend suite 120/120; документация — 20 зарегистрированных документов,
+  22 Markdown, 265 ссылок; `git diff --check` exit 0. Исправлены отсутствие
+  `asyncio` в default GigaChat transport, утечка тела запроса в 422 validation
+  errors, нормализация httpcore protocol/stream errors и stream timeouts.
+  Защищены логи httpcore/httpx, добавлены регрессионные проверки. Q-010 открыт,
+  production user auth не реализована.
+- Final review: независимый review выявил три P1 (GigaChat default transport,
+  validation response credential echo, transport protocol/stream exceptions).
+  Все три исправлены и покрыты регрессионными тестами. В повторном review
+  найдены и исправлены P2 по stream timeout и логам httpcore/httpx; последнее
+  обновление повторно проверено без замечаний. Полный backend suite — 120/120.
+- Ruling Task 7: gateway protocol использует `credentials_ciphertext`, как
+  ORM-модель, вместо промежуточного имени `encrypted_credentials`; причина —
+  согласование интерфейса с фактической моделью до integration wiring. Цена
+  ошибки — возможный разрыв при будущем переименовании persistence поля.
+
+## Настройки подключения LLM на frontend — 2026-09-28
+
+- Пользователь подтвердил сквозной экран настроек для существующего backend
+  API: provider-specific форма для OpenAI/OpenAI-compatible/YandexGPT/GigaChat,
+  сохранение, проверка подключения, список безопасных метаданных и отображение
+  статусов/ошибок. Генерация резюме и писем не входит.
+- `REQ-054` реализовано: ключ передаётся через `/api/v1/llm-connections`, не
+  сохраняется в браузере и очищается из поля после отправки; список и проверка
+  используют backend API. Редактирование/удаление не добавляются до решения
+  Q-010. Добавлены provider-specific формы и статусы; frontend suite 76/76 и
+  `npm run build` прошли; независимый review не выявил замечаний. UI использует
+  Vite/Nginx reverse proxy `/api`.
+- Сквозная граница production не изменилась: аутентификация пользователей
+  отсутствует, поэтому dev identity не обеспечивает изоляцию реальных
+  пользователей в production.
 
 ## Текущая работа 2026-09-25
 
@@ -22,9 +99,9 @@ scope: Состояние проекта и передача контекста 
 - SPEC-005 версии 1.1 одобрена пользователем 2026-09-25; версия 1.3 с
   политикой жизненного цикла и уточнениями о вводе текста и ошибке импорта
   одобрена пользователем «ок» 2026-09-25.
-  Q-007 и Q-009
-  решены для MVP; Q-008 (OCR/форматы Word) отложен без изменений. PLAN-002
-  обновлён до версии 1.2 и ожидает review пользователя. Черновик
+  Q-007 и Q-009 решены для MVP; Q-008 (OCR/форматы Word) закрыт решением не
+  реализовывать OCR и `.doc` сейчас. PLAN-002 обновлён до версии 1.2 и
+  одобрен к исполнению. Черновик
   [PLAN-002](superpowers/plans/2026-09-25-resume-profile-backend-plan.md)
   одобрен к исполнению по поручению пользователя 2026-09-25. Реализация идёт
   с TDD в отдельной ветке. Task 1 создал FastAPI-основу и локальное
@@ -34,8 +111,9 @@ scope: Состояние проекта и передача контекста 
 - Task 2 реализовал чистый детерминированный парсер русского/английского
   текста в неизменяемые блоки. RED подтвердил отсутствие модуля; после
   реализации — 15/15 тестов парсера и 17/17 тестов backend в целом.
-- Открытые решения: Q-001 и Q-003 отложены до соответствующих будущих
-  функций; Q-002 — только отдельное подтверждение пользователя для каждой
+- Q-001 решён: обязательный GPT CV Maker заменён отдельной backend-интеграцией
+  API провайдеров LLM; Q-003 закрыт решением сделать на фронтенде переключатель
+  режима длины письма; Q-002 — только отдельное подтверждение пользователя для каждой
   отправки; Q-004 и Q-005 решены. Политика Q-007 для MVP записана в SPEC-005
   1.3 и ADR-002; изменения плана ожидают review пользователя.
   Обязательная интеграция frontend с backend добавлена как REQ-046.
@@ -255,3 +333,54 @@ schema parity, `scripts/check_docs.py` (17 зарегистрированных 
 зафиксированы коммитом `0bee569` в feature-ветке. PostgreSQL миграция остаётся
 непроверенной; существующие ad-hoc базы нельзя автоматически считать
 совместимыми с initial revision.
+
+## Решения пользователя — 2026-09-28
+
+Пользователь подтвердил, что OCR для сканированных PDF и поддержка старого
+формата `.doc` сейчас не нужны (Q-008). Для сопроводительного письма выбран
+переключатель на фронтенде между ограничениями 150–300 слов и 800–1500
+символов (Q-003); сама реализация переключателя и передача режима в генерацию
+ещё не выполнены. Пользователь 2026-09-28 отказался от обязательного GPT CV
+Maker и выбрал интеграцию по API с поддержкой OpenAI-compatible Chat
+Completions, YandexGPT и GigaChat; каждый пользователь подключает собственные
+ключи. Уточнённая граница: SPEC-006 описывает только backend provider
+connections и общий текстовый gateway; ввод вакансии, подготовка резюме/письма,
+версии отклика и frontend вынесены в отдельные задачи. Созданы
+[SPEC-006](superpowers/specs/2026-09-28-llm-provider-integration-design.md) и
+[ADR-003](decisions/ADR-003-llm-provider-adapters.md); письменный review
+спецификации ожидается. Внесено Q-010 об удалении/деактивации секретов.
+Production-многопользовательское использование требует реальной
+аутентификации; текущая dev identity для этого не подходит.
+
+## Единый Docker-запуск — 2026-09-28
+
+Добавлены `docker-compose.yml`, Dockerfile backend, многоэтапная сборка
+frontend с Nginx и reverse proxy для `/api`. Проект запускается одной командой
+`docker compose up --build`; порт frontend привязан к `127.0.0.1:8080`, backend
+остаётся внутренним сервисом compose. SQLite сохраняется в volume
+`cv_profiles_data`. Образы в этой среде не собирались: Docker CLI не установлен.
+
+## Проверка безопасности LLM-интеграции — 2026-09-28
+
+Проверены auth dependency, owner-scoped API/репозитории, DTO/валидация,
+шифрование, provider transport, Docker Compose и build contexts. Подтверждено:
+Compose включает development identity с фиксированным UUID без аутентификации;
+до этого порта frontend не был явно привязан к localhost. Порт теперь
+привязан к `127.0.0.1`, а README и инструкция запуска запрещают использовать
+этот профиль на общем/публичном сервере. Production-многопользовательская
+эксплуатация всё ещё блокируется отсутствием настоящей аутентификации.
+
+Добавлен корневой `.gitignore` для `.env*` и локальных артефактов; `.env*`
+исключены из backend Docker context, создан frontend `.dockerignore` для
+секретов, node_modules и build/test artifacts. В `DecryptedLLMConnection`
+скрыто поле credentials из стандартного `repr`, добавлен регрессионный тест.
+Тест не удалось исполнить в этой среде: backend venv не содержит объявленную
+зависимость `cryptography`; проверка остановилась при импорте pytest conftest.
+В репозитории не найден существующий `.env` файл.
+
+Остаточные риски: подключённый через OpenAI-compatible endpoint сервер может
+вернуть неограниченно большой ответ, который HTTPX буферизует в памяти; нет
+ограничения частоты тестовых вызовов и размера JSON credentials/settings.
+Пока нет реальной auth и rate limiting, тест подключения может расходовать
+квоту владельца при доступе к локальному dev API с той же машины. Docker
+Compose конфигурацию невозможно проверить запуском без Docker CLI.

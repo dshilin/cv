@@ -9,6 +9,7 @@ from cv_backend.storage.models.draft import (
     ResumeDraftModel,
 )
 from cv_backend.storage.models.profile import ProfileItemSelectionModel, SpecializationProfileModel
+from cv_backend.storage.models.llm_connection import LLMConnectionModel
 
 __all__ = [
     "CandidateBaseModel",
@@ -19,4 +20,5 @@ __all__ = [
     "ResumeDraftModel",
     "ProfileItemSelectionModel",
     "SpecializationProfileModel",
+    "LLMConnectionModel",
 ]
