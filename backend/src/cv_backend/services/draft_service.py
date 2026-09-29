@@ -1,6 +1,7 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cv_backend.domain.candidate import CandidateItemInput
@@ -63,14 +64,7 @@ class DraftService:
                 )
             )
             if draft is not None:
-                applied_count = self.session.scalar(
-                    select(func.count())
-                    .select_from(DraftApplicationModel)
-                    .where(DraftApplicationModel.draft_id == draft_id)
-                ) or 0
-                block_count = len(draft.blocks)
-                if draft.state != "reviewed":
-                    draft.state = "applied" if applied_count >= block_count else "partially_applied"
+                draft.updated_at = datetime.now(timezone.utc)
             self.session.commit()
             return created
         except Exception:

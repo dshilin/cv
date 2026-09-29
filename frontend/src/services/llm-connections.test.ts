@@ -5,7 +5,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 it('loads owner connection summaries without requesting or returning credentials', async () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([{
-    id: 'connection-1', provider: 'openai', settings: {}, default_model: 'gpt-test',
+    id: 'connection-1', provider: 'openai', settings: {}, default_model: 'test-model',
     status: 'verified', last_tested_at: '2026-09-28T10:00:00Z',
     created_at: '2026-09-28T09:00:00Z', updated_at: '2026-09-28T10:00:00Z',
   }]), { status: 200 }))

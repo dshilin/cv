@@ -1,7 +1,7 @@
 ---
 id: SPEC-002
 status: draft
-version: 2.2
+version: 2.3
 owner: Архитектор / владелец продукта (роли; персональное назначение отсутствует)
 approved_by: Утверждение исходного содержания не зафиксировано
 last_reviewed: 2026-09-28
@@ -14,6 +14,20 @@ scope: Веб-сервис поиска работы, backend, интеграц�
 # Архитектурное техническое задание автономного ИИ агента поиска работы
 
 Веб сервис с backend на Python и входом через Яндекс ID и VK ID
+
+Текущий backend реализует только VK ID authorization-code login; Яндекс ID
+остаётся целевым пунктом исходного ТЗ и не считается реализованным. VK ID
+используется с OAuth 2.1 `state` + PKCE S256; callback обменивает code на
+backend, получает user info и создаёт внутреннюю сессию. Приложение хранит
+только хеш session token и CSRF token; браузеру выдаются HttpOnly/Secure
+session cookie и отдельный CSRF cookie. VK access token не сохраняется.
+Конфигурация: `VK_ID_APP_ID`, `VK_ID_REDIRECT_URI`, опциональный
+`CV_AUTH_STATE_SECRET`; callback должен быть HTTPS.
+Реализация сверена 2026-09-28 с исходным кодом официального [VK ID Web SDK](https://github.com/VKCOM/vkid-web-sdk/blob/master/src/auth/auth.ts)
+и его [API документацией](https://vkcom.github.io/vkid-web-sdk/docs/classes/auth.Auth.html), версия SDK 2.6.1:
+обмен кода включает `device_id`, `state` и `code_verifier`, ответный `state`
+сверяется; запрос user info передаёт `client_id` в query и access token в POST body.
+Без конфигурации вход отвечает 503, production API остаются fail-closed.
 
 | Параметр | Значение |
 |---|---|
@@ -365,6 +379,18 @@ decision = (
 
 ## 14 Модель данных
 
+Для SPEC-007 общая база кандидата хранит имя отдельно от профиля
+специализации, а типизированные контакты общие для профилей. Черновик импорта
+хранит название и отдельное состояние проверки. Прогресс переноса блоков
+определяется по записям применения и не меняет отметку проверки. Любая
+сохранённая правка проверенного черновика возвращает его в очередь проверки.
+
+Для работы по SPEC-007 общая база кандидата хранит имя кандидата отдельно от
+профиля специализации, а контакты остаются типизированными общими записями.
+Черновик импорта хранит название и отдельное состояние проверки. Прогресс
+переноса блоков считается по записям применения и не меняет отметку проверки.
+Любая сохранённая правка сбрасывает проверенный статус.
+
 | Сущность | Назначение | Ключевые поля |
 |---|---|---|
 | users | Пользователь | id, status, timezone, created_at |
@@ -376,6 +402,8 @@ decision = (
 | search_runs | Запуски workflow | state, started_at, completed_at |
 | vacancies | Нормализованные вакансии | fingerprint, title, company, payload |
 | vacancy_matches | Оценка вакансии | score, features, explanation |
+| auth_identities | Сопоставление провайдера с owner | provider, subject, owner_id |
+| auth_sessions | Внутренняя сессия | token_hash, csrf_hash, expires_at |
 | applications | Отклики | status, idempotency_key, external_id |
 | application_events | История статусов | event_type, payload, timestamp |
 | agent_runs | Выполнение агентов | agent_type, model, prompt_version, cost |
@@ -390,6 +418,8 @@ decision = (
 | GET | /api/v1/auth/yandex/callback | Обработка callback |
 | GET | /api/v1/auth/vk/start | Запуск входа через VK ID |
 | GET | /api/v1/auth/vk/callback | Обработка callback |
+| GET | /api/v1/auth/me | Проверка текущей сессии |
+| POST | /api/v1/auth/logout | CSRF-защищённый выход |
 | POST | /api/v1/resumes | Загрузка резюме |
 | POST | /api/v1/resumes/{id}/confirm-facts | Подтверждение фактов |
 | POST | /api/v1/search-profiles | Создание поискового профиля |

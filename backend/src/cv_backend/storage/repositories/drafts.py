@@ -13,7 +13,7 @@ class DraftRepository:
         self.session = session
 
     def create(self, owner_id: UUID, blocks: list[DraftBlockInput]) -> ResumeDraftModel:
-        draft = ResumeDraftModel(owner_id=owner_id)
+        draft = ResumeDraftModel(owner_id=owner_id, title=self._available_title(owner_id))
         draft.blocks = [
             DraftBlockModel(kind=block.kind, heading=block.heading, text=block.text, ordinal=block.ordinal)
             for block in blocks
@@ -21,6 +21,18 @@ class DraftRepository:
         self.session.add(draft)
         self.session.flush()
         return draft
+
+    def _available_title(self, owner_id: UUID) -> str:
+        base = f"Черновик резюме {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M')}"
+        titles = set(self.session.scalars(
+            select(ResumeDraftModel.title).where(ResumeDraftModel.owner_id == owner_id)
+        ).all())
+        candidate = base
+        suffix = 2
+        while candidate in titles:
+            candidate = f"{base} ({suffix})"
+            suffix += 1
+        return candidate
 
     def get(self, owner_id: UUID, draft_id: UUID) -> ResumeDraftModel | None:
         return self.session.scalar(
@@ -39,13 +51,11 @@ class DraftRepository:
             ResumeDraftModel.is_deleted.is_(False),
         )
         if state is not None:
-            query = query.where(ResumeDraftModel.state == state)
-        else:
-            query = query.where(ResumeDraftModel.state != "reviewed")
+            query = query.where(ResumeDraftModel.review_status == state)
         return list(
             self.session.scalars(
                 query.options(selectinload(ResumeDraftModel.blocks)).order_by(
-                    ResumeDraftModel.created_at, ResumeDraftModel.id
+                    ResumeDraftModel.updated_at.desc(), ResumeDraftModel.created_at.desc()
                 )
             ).all()
         )
@@ -70,6 +80,8 @@ class DraftRepository:
         if draft is None:
             return None
         draft.state = "reviewed"
+        draft.review_status = "reviewed"
+        draft.updated_at = datetime.now(timezone.utc)
         self.session.flush()
         return draft
 
@@ -82,8 +94,24 @@ class DraftRepository:
             return None
         next_ordinal = max((block.ordinal for block in draft.blocks), default=-1) + 1
         draft.blocks.append(DraftBlockModel(kind="experience", heading=None, text=text, ordinal=next_ordinal))
+        self._mark_edited(draft)
         self.session.flush()
         return draft
+
+    def update_title(self, owner_id: UUID, draft_id: UUID, title: str) -> ResumeDraftModel | None:
+        draft = self.get(owner_id, draft_id)
+        if draft is None:
+            return None
+        draft.title = title.strip()
+        self._mark_edited(draft)
+        self.session.flush()
+        return draft
+
+    @staticmethod
+    def _mark_edited(draft: ResumeDraftModel) -> None:
+        draft.updated_at = datetime.now(timezone.utc)
+        draft.review_status = "needs_user_review"
+        draft.state = "needs_user_review"
 
     def get_block(self, owner_id: UUID, draft_id: UUID, block_id: UUID) -> DraftBlockModel | None:
         return self.session.scalar(
@@ -112,3 +140,8 @@ class DraftRepository:
                 DraftApplicationModel.block_id == block_id,
             )
         )
+
+    def applied_block_count(self, draft_id: UUID) -> int:
+        return len(self.session.scalars(
+            select(DraftApplicationModel.block_id).where(DraftApplicationModel.draft_id == draft_id)
+        ).all())

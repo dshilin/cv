@@ -16,6 +16,7 @@ class CandidateBaseModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), unique=True, index=True)
+    full_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     items: Mapped[list["CandidateItemModel"]] = relationship(back_populates="base")

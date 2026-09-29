@@ -1,12 +1,17 @@
 services:
   backend:
+    restart: unless-stopped
     build:
       context: ./backend
     environment:
       CV_ENV: development
-      CV_DEV_USER_ID: 00000000-0000-4000-8000-000000000001
+      CV_DEV_USER_ID: ${CV_DEV_USER_ID-00000000-0000-4000-8000-000000000001}
       CV_AUTO_CREATE_SCHEMA: "true"
       CV_LLM_ENCRYPTION_KEY: ${CV_LLM_ENCRYPTION_KEY:?Set a 64-character hexadecimal AES-256 key in .env}
+      VK_ID_APP_ID: ${VK_ID_APP_ID:-}
+      VK_ID_REDIRECT_URI: ${VK_ID_REDIRECT_URI:-}
+      CV_AUTH_STATE_SECRET: ${CV_AUTH_STATE_SECRET:-}
+      CV_SESSION_COOKIE_SECURE: ${CV_SESSION_COOKIE_SECURE:-true}
       DATABASE_URL: sqlite+pysqlite:///./data/cv_profiles.sqlite3
     volumes:
       - cv_profiles_data:/app/data
@@ -21,6 +26,7 @@ services:
       retries: 10
 
   frontend:
+    restart: unless-stopped
     build:
       context: ./frontend
     depends_on:

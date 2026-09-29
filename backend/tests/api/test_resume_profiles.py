@@ -195,10 +195,14 @@ def test_draft_review_and_delete_preserve_draft_blocks(client):
     reviewed = client.post(f"/api/v1/resume-drafts/{draft_id}/review")
     assert reviewed.status_code == 200
     assert reviewed.json()["state"] == "reviewed"
-    assert all(row["draft_id"] != draft_id for row in client.get("/api/v1/resume-drafts").json())
+    assert any(row["draft_id"] == draft_id for row in client.get("/api/v1/resume-drafts").json())
     assert any(
         row["draft_id"] == draft_id
         for row in client.get("/api/v1/resume-drafts?state=reviewed").json()
+    )
+    assert all(
+        row["draft_id"] != draft_id
+        for row in client.get("/api/v1/resume-drafts?state=needs_user_review").json()
     )
     assert client.get(f"/api/v1/resume-drafts/{draft_id}").status_code == 200
 

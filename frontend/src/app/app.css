@@ -70,3 +70,38 @@ form.profile-card button, .profile-card > button { margin: 8px 8px 0 0; padding:
   .sidebar nav { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
   .llm-connection-list li { align-items: flex-start; flex-direction: column; }
 }
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 2rem; }
+.auth-card { width: min(100%, 28rem); padding: 2.5rem; background: white; border-radius: 1rem; box-shadow: 0 1rem 3rem #18263a18; }
+
+.resume-draft-editor { width: min(100%, 960px); margin-top: 28px; }
+.resume-draft-help { color: #475467; }
+.resume-draft-blocks { display: grid; gap: 16px; margin: 20px 0; }
+.resume-draft-block { display: grid; gap: 10px; min-width: 0; padding: 20px; background: white; border: 1px solid #d0d5dd; border-radius: 10px; }
+.resume-draft-block h3, .resume-draft-block p { margin: 0; }
+.resume-draft-block label { font-weight: 600; }
+.resume-draft-block textarea { display: block; width: 100%; min-height: 180px; padding: 12px; resize: vertical; font: inherit; line-height: 1.5; }
+.resume-experience-form { margin-top: 20px; }
+.resume-experience-form button { justify-self: start; padding: 9px 14px; cursor: pointer; }
+.resume-drafts-page { max-width: 1200px; }
+.draft-actions, .draft-filter, .draft-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
+.draft-actions button, .draft-filter button, .draft-editor-actions button { padding: 9px 13px; cursor: pointer; }
+.resume-draft-list { display: grid; gap: 10px; padding: 0; list-style: none; }
+.resume-draft-list li button { display: grid; grid-template-columns: minmax(180px, 2fr) repeat(4, minmax(120px, 1fr)); gap: 12px; width: 100%; padding: 14px; text-align: left; background: white; border: 1px solid #d0d5dd; border-radius: 8px; cursor: pointer; }
+.resume-draft-list li button:hover { border-color: #2563eb; }
+.draft-editor-heading, .candidate-contact { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; }
+.draft-title-field, .candidate-contact label, .add-contact-form label { display: grid; gap: 6px; }
+.draft-title-field input, .candidate-contact input, .add-contact-form input, .specialization-profile-list input, .specialization-profile-list textarea { width: min(100%, 720px); padding: 9px; font: inherit; }
+.resume-draft-editor { width: min(100%, 1180px); }
+.save-state { padding: 7px 10px; border-radius: 6px; background: #eff6ff; }
+.save-state-error { color: #b42318; background: #fef3f2; }
+.candidate-contacts, .add-contact-form { display: grid; gap: 12px; margin: 12px 0; }
+.candidate-contact { justify-content: start; padding: 12px; background: #f8fafc; border-radius: 8px; }
+.specialization-profile-list { padding-left: 22px; }
+.specialization-profile-list li { margin: 14px 0; padding: 18px; background: white; border: 1px solid #d0d5dd; border-radius: 10px; }
+.specialization-profile-list label { display: grid; gap: 6px; margin: 8px 0; }
+.personal-profile-card { margin: 22px 0; }
+
+@media (max-width: 700px) {
+  .resume-draft-block { padding: 16px; }
+  .resume-draft-list li button { grid-template-columns: 1fr; }
+}

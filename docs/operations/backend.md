@@ -1,7 +1,7 @@
 ---
 id: DOC-006
 status: active
-version: 0.3
+version: 0.5
 owner: Backend-разработчик (роль; персональное назначение отсутствует)
 approved_by: Не требуется; инструкция эксплуатации
 last_reviewed: 2026-09-28
@@ -25,6 +25,9 @@ docker compose up --build
 или публичном сервере: в нём включена общая development identity без
 аутентификации. Остановить проект можно командой `docker compose down`; данные
 локальной SQLite сохраняются в volume `cv_profiles_data`.
+Оба dev-сервиса используют политику `restart: unless-stopped`: после
+перезапуска Docker engine они запускаются повторно, пока пользователь явно
+не остановит проект или не выполнит `docker compose down`.
 
 ## Требования
 
@@ -70,7 +73,17 @@ $env:CV_LLM_ENCRYPTION_KEY = "<64 hex characters from a local secret store>"
 & .\.venv\Scripts\python.exe -m uvicorn cv_backend.app:create_app --factory --reload
 ```
 
-Локальный запуск по умолчанию создаёт SQLite файл `backend/cv_profiles.sqlite3`.
+VK ID вход активируется отдельно переменными `VK_ID_APP_ID`,
+`VK_ID_REDIRECT_URI` (должен точно совпадать с callback, зарегистрированным
+в кабинете VK ID) и случайным `CV_AUTH_STATE_SECRET` из secret manager. Callback:
+`/api/v1/auth/vk/callback`. В production применяйте только HTTPS; session и
+OAuth flow cookies выставляются с `Secure`. Проверьте рабочий сценарий на
+зарегистрированном VK ID приложении после настройки этих параметров.
+Без конфигурации `/api/v1/auth/vk/start` отвечает 503. Текущая development
+identity остаётся доступна только при явных `CV_ENV=development` и
+`CV_DEV_USER_ID`.
+
+  Локальный запуск по умолчанию создаёт SQLite файл `backend/cv_profiles.sqlite3`.
 Его схема создаётся только при явно включённом `CV_AUTO_CREATE_SCHEMA=true` и
 только в `CV_ENV=development`. Для другой локальной БД задайте `DATABASE_URL`.
 В production этот флаг не выполняет ничего; до закрытия Q-007 и миграции
@@ -88,6 +101,61 @@ identity; переключатель не доступен в production.
 
 Docker Compose требует `CV_LLM_ENCRYPTION_KEY` в локальном `.env` до запуска
 `docker compose up --build`; без ключа Compose завершится fail-closed.
+Для текущего dev checkout локальный `.env` подготовлен и игнорируется Git.
+
+## Проверка VK ID на локальном dev
+
+VK ID login заменяет development identity для backend, поэтому на время
+проверки нужно задать в корневом `.env`:
+
+```dotenv
+CV_DEV_USER_ID=
+VK_ID_APP_ID=<APP_ID из кабинета VK ID>
+VK_ID_REDIRECT_URI=https://<публичный HTTPS hostname>/api/v1/auth/vk/callback
+CV_AUTH_STATE_SECRET=<случайная строка не короче 32 байт>
+CV_SESSION_COOKIE_SECURE=true
+```
+
+Создайте приложение VK ID и зарегистрируйте в нём тот же точный HTTPS callback.
+Для локального `http://localhost:8080` поднимите временный HTTPS tunnel на порт
+8080. Например, в отдельном PowerShell запустите tunnel в Docker:
+
+```powershell
+docker run --rm -it cloudflare/cloudflared:latest tunnel --url http://host.docker.internal:8080
+```
+
+Команда напечатает случайный `https://….trycloudflare.com`; оставьте tunnel
+работать на время проверки. В VK ID зарегистрируйте callback с этим hostname и
+путём `/api/v1/auth/vk/callback`, затем укажите его в `.env` и откройте приложение
+через HTTPS URL. После перезапуска tunnel адрес может измениться — обновите его
+и в кабинете VK ID, и в `.env`. Официальная документация VK ID требует APP_ID и
+задаёт redirect URL в конфигурации приложения; Cloudflare описывает Quick Tunnel
+как временный адрес для разработки. Пока tunnel запущен, этот dev frontend
+доступен извне по случайному публичному адресу; используйте для проверки
+тестовые данные.
+
+Секрет state можно сгенерировать командой
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`; сохраните вывод
+только в `.env`. Не присылайте секрет в чат и не добавляйте `.env` в Git.
+После настройки пересоздайте dev сервисы:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Откройте `https://<публичный HTTPS hostname>/login`. Должна появиться кнопка
+«Войти через VK ID». Нажмите её, пройдите авторизацию тестовым аккаунтом VK,
+убедитесь, что браузер вернулся на `/profile`, а `GET /api/v1/auth/me` сообщает
+`authenticated: true`. Проверьте выход и повторный вход. Если выдать VK ID
+приложению тестовый режим, проходите flow аккаунтом, разрешённым настройками
+этого приложения.
+
+Чтобы вернуться к обычному локальному dev-режиму, удалите `CV_DEV_USER_ID=` из
+`.env` (или верните значение `00000000-0000-4000-8000-000000000001`) и снова
+выполните `docker compose up -d`. Без `VK_ID_APP_ID`, точного redirect URI и
+state secret реальный OAuth flow не завершится; локальная development identity
+включена по умолчанию только для этого Compose dev окружения.
 
 ## Реализованные маршруты
 
@@ -98,6 +166,13 @@ Docker Compose требует `CV_LLM_ENCRYPTION_KEY` в локальном `.en
   не хранится. PDF без текстового слоя и неподдерживаемый формат отклоняются.
 - `GET /api/v1/resume-drafts/{id}` и `PATCH /api/v1/resume-drafts/{id}/blocks/{block_id}`
   — получить черновик и отдельно редактировать текст одного блока.
+- `GET /api/v1/resume-drafts` включает все не удалённые черновики с названием,
+  датами, состоянием проверки и отдельным прогрессом переноса. Название
+  меняется через `PATCH /api/v1/resume-drafts/{id}`; проверка выполняется
+  `POST /api/v1/resume-drafts/{id}/review`. Любая сохранённая правка сбрасывает
+  `review_status` в `needs_user_review`.
+- `GET/PATCH /api/v1/candidate-base` читают и меняют `full_name`; контакты
+  общей базы управляются через `/api/v1/candidate-base/contacts`.
 - `POST /api/v1/resume-drafts/{id}/blocks/{block_id}/apply` — явное применение
   typed элементов пользователя в общую базу; повтор защищён idempotency key.
 - `GET /api/v1/candidate-base/items` — список собственных записей.
@@ -117,7 +192,8 @@ Q-010.
 
 ## Ограничения текущего этапа
 
-OAuth провайдер не подключён. Alembic migration для текущей схемы добавлена и
+VK ID OAuth подключён при наличии credentials; Яндекс ID не реализован.
+Alembic migration для текущей схемы добавлена и
 проверяется на временной SQLite; миграция PostgreSQL и baseline для
 существующей ad-hoc базы требуют отдельной проверки. Продуктовый flow ограничен созданием
 профилей, текстовым/PDF/DOCX импортом черновика и его блочным редактированием;

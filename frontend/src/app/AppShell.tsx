@@ -7,7 +7,8 @@ import { fixtureProfileService, fixtureSearchService } from '../services/fixture
 
 const navigation = [
   { to: '/profile', label: 'Профиль', end: true },
-  { to: '/resume-profiles', label: 'Профили резюме' },
+  { to: '/resume-profiles', label: 'Профили специализации' },
+  { to: '/resume-drafts', label: 'Черновики резюме' },
   { to: '/profile/readiness', label: 'Готовность' },
   { to: '/sources', label: 'Сервисы' },
   { to: '/search', label: 'Поиск' },
@@ -22,7 +23,7 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
   const [searchActive, setSearchActive] = useState(false)
   const location = useLocation()
   useEffect(() => {
-    if (location.pathname.startsWith('/resume-profiles')) {
+    if (location.pathname.startsWith('/resume-profiles') || location.pathname.startsWith('/resume-drafts')) {
       setProfileLoaded(true)
       return
     }
@@ -32,7 +33,7 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
     return () => { current = false }
   }, [location.pathname, profileService])
   useEffect(() => {
-    if (location.pathname.startsWith('/resume-profiles')) {
+    if (location.pathname.startsWith('/resume-profiles') || location.pathname.startsWith('/resume-drafts')) {
       setSearchActive(false)
       return
     }
@@ -43,6 +44,11 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
   const profileReady = profile ? evaluateProfileReadiness(profile).ready : false
   const pendingActions = Boolean(profile?.facts.some((fact) => fact.status === 'needs_review' || fact.status === 'needs_input') ||
     profile?.questions.some((question) => question.mandatory && !question.resolved))
+  function guardNavigation(event: React.MouseEvent<HTMLAnchorElement>) {
+    const request = new CustomEvent('cv:before-route-change', { detail: { allow: true } })
+    window.dispatchEvent(request)
+    if (!request.detail.allow) event.preventDefault()
+  }
   return (
     <div className="app-shell">
       <a className="skip-link" href="#content">Перейти к содержимому</a>
@@ -50,7 +56,7 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
         <div className="brand">CV Maker</div>
         <nav aria-label="Основная навигация">
           {navigation.map(({ to, label, end }) => (
-            <NavLink key={to} to={to} end={end}>
+            <NavLink key={to} to={to} end={end} onClick={guardNavigation}>
               {label}
             </NavLink>
           ))}
@@ -61,6 +67,12 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
           <span>{profileReady ? 'Профиль готов' : 'Профиль не готов'}</span>
           <span>{searchActive ? 'Поиск активен' : 'Поиск не настроен'}</span>
           <span>{pendingActions ? 'Есть ожидающие действия' : 'Действий не ожидается'}</span>
+          <a href="/api/v1/auth/logout" onClick={async (event) => {
+            event.preventDefault()
+            const csrf = document.cookie.split('; ').find((part) => part.startsWith('cv_csrf='))?.split('=').slice(1).join('=')
+            if (csrf) await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csrf_token: decodeURIComponent(csrf) }) })
+            window.location.assign('/login')
+          }}>Выйти</a>
         </header>
         <main id="content" tabIndex={-1}>
           <Outlet context={{ profileService, onProfileChange: setProfile, profile, profileLoaded }} />

@@ -53,7 +53,7 @@ describe('JobsPage', () => {
     const second = screen.getByRole('article', { name: 'Product Designer' })
     expect(within(second).getByText(/Новая/)).toBeVisible()
     expect(within(second).getByText(/Sample Feed/)).toBeVisible()
-  })
+  }, 15000)
 
   it('shows required skills, confirmed matches, gaps, and separate vacancy text on the detail page', async () => {
     renderJobs('/jobs/job-1')

@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from cv_backend.api.dependencies import get_current_user_id, get_db_session
@@ -30,7 +30,13 @@ class DraftBlockResponse(BaseModel):
 
 class DraftResponse(BaseModel):
     draft_id: UUID
+    title: str
+    created_at: str
+    updated_at: str
     state: str
+    application_progress: str
+    applied_blocks: int
+    total_blocks: int
     blocks: list[DraftBlockResponse]
 
 
@@ -49,13 +55,32 @@ class ExperienceBlockRequest(BaseModel):
 
 class DraftListItem(BaseModel):
     draft_id: UUID
+    title: str
+    created_at: str
+    updated_at: str
     state: str
+    application_progress: str
+    applied_blocks: int
+    total_blocks: int
 
 
-def _response(draft) -> DraftResponse:
+class DraftTitleRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    title: str = Field(min_length=1, max_length=160)
+
+
+def _response(draft, repository: DraftRepository) -> DraftResponse:
+    applied_blocks = repository.applied_block_count(draft.id)
+    total_blocks = len(draft.blocks)
     return DraftResponse(
         draft_id=draft.id,
-        state=draft.state,
+        title=draft.title,
+        created_at=draft.created_at.isoformat(),
+        updated_at=draft.updated_at.isoformat(),
+        state=draft.review_status,
+        application_progress=("none" if applied_blocks == 0 else "complete" if applied_blocks >= total_blocks else "partial"),
+        applied_blocks=applied_blocks,
+        total_blocks=total_blocks,
         blocks=[
             DraftBlockResponse(
                 id=block.id,
@@ -75,12 +100,16 @@ def list_drafts(
     owner_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_db_session),
 ):
-    if state not in (None, "needs_user_review", "partially_applied", "applied", "reviewed"):
+    if state not in (None, "needs_user_review", "reviewed"):
         raise HTTPException(status_code=422, detail="Unsupported draft state")
     drafts = DraftRepository(session).list(owner_id, state)
-    if state is None:
-        drafts = [draft for draft in drafts if draft.state != "reviewed"]
-    return [DraftListItem(draft_id=draft.id, state=draft.state) for draft in drafts]
+    repository = DraftRepository(session)
+    return [DraftListItem(
+        draft_id=draft.id, title=draft.title, created_at=draft.created_at.isoformat(),
+        updated_at=draft.updated_at.isoformat(), state=draft.review_status,
+        application_progress=("none" if (count := repository.applied_block_count(draft.id)) == 0 else "complete" if count >= len(draft.blocks) else "partial"),
+        applied_blocks=count, total_blocks=len(draft.blocks),
+    ) for draft in drafts]
 
 
 @router.post("/resume-drafts", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
@@ -90,7 +119,7 @@ def create_draft(
 ) -> DraftResponse:
     draft = DraftRepository(session).create_empty(owner_id)
     session.commit()
-    return _response(draft)
+    return _response(draft, DraftRepository(session))
 
 
 @router.post("/resume-drafts/file", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
@@ -115,7 +144,7 @@ async def import_file(
         raise HTTPException(status_code=422, detail="Document contains no importable content")
     draft = DraftRepository(session).create(owner_id, blocks)
     session.commit()
-    return _response(draft)
+    return _response(draft, DraftRepository(session))
 
 
 @router.get("/resume-drafts/{draft_id}", response_model=DraftResponse)
@@ -127,7 +156,22 @@ def get_draft(
     draft = DraftRepository(session).get(owner_id, draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
-    return _response(draft)
+    return _response(draft, DraftRepository(session))
+
+
+@router.patch("/resume-drafts/{draft_id}", response_model=DraftResponse)
+def update_draft_title(
+    draft_id: UUID,
+    data: DraftTitleRequest,
+    owner_id: UUID = Depends(get_current_user_id),
+    session: Session = Depends(get_db_session),
+) -> DraftResponse:
+    repository = DraftRepository(session)
+    draft = repository.update_title(owner_id, draft_id, data.title)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    session.commit()
+    return _response(draft, repository)
 
 
 @router.post("/resume-drafts/{draft_id}/review", response_model=DraftResponse)
@@ -136,11 +180,12 @@ def review_draft(
     owner_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_db_session),
 ) -> DraftResponse:
-    draft = DraftRepository(session).review(owner_id, draft_id)
+    repository = DraftRepository(session)
+    draft = repository.review(owner_id, draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
     session.commit()
-    return _response(draft)
+    return _response(draft, repository)
 
 
 @router.delete("/resume-drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -167,7 +212,7 @@ def add_experience_block(
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
     session.commit()
-    return _response(draft)
+    return _response(draft, DraftRepository(session))
 
 
 @router.patch("/resume-drafts/{draft_id}/blocks/{block_id}", response_model=DraftResponse)
@@ -184,9 +229,12 @@ def edit_draft_block(
     block = repository.get_block(owner_id, draft_id, block_id)
     assert block is not None
     block.text = data.text
-    session.commit()
+    repository = DraftRepository(session)
     draft = repository.get(owner_id, draft_id)
-    return _response(draft)
+    assert draft is not None
+    repository._mark_edited(draft)
+    session.commit()
+    return _response(draft, repository)
 
 
 @router.post("/resume-drafts/{draft_id}/blocks/{block_id}/apply")

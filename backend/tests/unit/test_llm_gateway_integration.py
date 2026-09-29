@@ -34,7 +34,7 @@ def test_gateway_loads_owner_connection_decrypts_and_dispatches(session_factory)
             encrypted_credentials=cipher.encrypt(
                 json.dumps({"api_key": "encrypted-key"}).encode()
             ),
-            default_model="gpt-test",
+            default_model="test-model",
         )
         record.status = "verified"
         session.commit()
@@ -44,7 +44,7 @@ def test_gateway_loads_owner_connection_decrypts_and_dispatches(session_factory)
             adapters={"openai": RecordingAdapter()},
         )
         request = LLMRequest(
-            messages=[LLMMessage(role="user", content="Hello")], model="gpt-test"
+            messages=[LLMMessage(role="user", content="Hello")], model="test-model"
         )
 
         response = asyncio.run(gateway.complete(OWNER_ID, record.id, request))
@@ -60,7 +60,7 @@ def test_gateway_hides_existing_connection_from_other_owner(session_factory) -> 
             provider="openai",
             settings={},
             encrypted_credentials=cipher.encrypt(b'{"api_key":"encrypted-key"}'),
-            default_model="gpt-test",
+            default_model="test-model",
         )
         record.status = "verified"
         session.commit()
@@ -77,7 +77,7 @@ def test_gateway_hides_existing_connection_from_other_owner(session_factory) -> 
                     record.id,
                     LLMRequest(
                         messages=[LLMMessage(role="user", content="Hello")],
-                        model="gpt-test",
+                        model="test-model",
                     ),
                 )
             )

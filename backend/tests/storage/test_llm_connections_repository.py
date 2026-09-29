@@ -19,7 +19,7 @@ def test_llm_connection_repository_scopes_reads_and_lists_by_owner(session_facto
             provider="openai",
             settings={"base_url": "https://api.openai.com/v1"},
             encrypted_credentials=b"ciphertext-only",
-            default_model="gpt-test",
+            default_model="test-model",
         )
         session.commit()
         connection_id = created.id

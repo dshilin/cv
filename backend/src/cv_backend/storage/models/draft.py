@@ -31,7 +31,9 @@ class ResumeDraftModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), index=True)
+    title: Mapped[str] = mapped_column(String(160), default="Черновик резюме")
     state: Mapped[str] = mapped_column(String(24), default="needs_user_review")
+    review_status: Mapped[str] = mapped_column(String(24), default="needs_user_review")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now

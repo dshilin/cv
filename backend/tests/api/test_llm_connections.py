@@ -34,7 +34,7 @@ def test_create_and_list_connection_never_return_credentials(client, monkeypatch
             "provider": "openai",
             "settings": {},
             "credentials": {"api_key": "top-secret-key"},
-            "default_model": "gpt-test",
+            "default_model": "test-model",
         },
     )
     assert created.status_code == 201
@@ -68,7 +68,7 @@ def test_test_connection_marks_verified_and_returns_no_generated_text(client, mo
     }
     created = client.post(
         "/api/v1/llm-connections",
-        json={"provider": "openai", "credentials": {"api_key": "top-secret-key"}, "default_model": "gpt-test"},
+        json={"provider": "openai", "credentials": {"api_key": "top-secret-key"}, "default_model": "test-model"},
     ).json()
 
     result = client.post(f"/api/v1/llm-connections/{created['id']}/test")
@@ -89,7 +89,7 @@ def test_cross_owner_cannot_read_or_test_another_users_connection(client, monkey
     client.app.dependency_overrides[get_provider_adapters] = lambda: {"openai": adapter}
     created = client.post(
         "/api/v1/llm-connections",
-        json={"provider": "openai", "credentials": {"api_key": "top-secret-key"}, "default_model": "gpt-test"},
+        json={"provider": "openai", "credentials": {"api_key": "top-secret-key"}, "default_model": "test-model"},
     ).json()
     client.app.dependency_overrides[get_current_user_id] = lambda: OTHER_OWNER_ID
 
@@ -107,7 +107,7 @@ def test_test_connection_returns_only_normalized_failure(client, monkeypatch) ->
     client.app.dependency_overrides[get_provider_adapters] = lambda: {"openai": adapter}
     created = client.post(
         "/api/v1/llm-connections",
-        json={"provider": "openai", "credentials": {"api_key": "top-secret-key"}, "default_model": "gpt-test"},
+        json={"provider": "openai", "credentials": {"api_key": "top-secret-key"}, "default_model": "test-model"},
     ).json()
 
     result = client.post(f"/api/v1/llm-connections/{created['id']}/test")
@@ -131,7 +131,7 @@ def test_connection_create_rejects_missing_provider_credentials_and_insecure_end
 
     missing_key = client.post(
         "/api/v1/llm-connections",
-        json={"provider": "openai", "credentials": {"api_key": ""}, "default_model": "gpt-test"},
+        json={"provider": "openai", "credentials": {"api_key": ""}, "default_model": "test-model"},
     )
     insecure_endpoint = client.post(
         "/api/v1/llm-connections",
