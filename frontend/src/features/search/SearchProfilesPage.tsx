@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SearchProfile, SourceConnection, SearchActivationBlocker } from '../../domain/search'
 import { validateSearchActivation } from '../../domain/search'
 import type { SearchService, SourceService } from '../../services/contracts'
-import { fixtureSearchService, fixtureSourceService } from '../../services/fixtures'
+import { emptySearchService, emptySourceService } from '../../services/runtime-empty'
 import { sourceName } from '../sources/SourceCard'
 import { SearchProfileForm } from './SearchProfileForm'
 
@@ -27,7 +27,7 @@ function launchSummary(profile: SearchProfile, connections: SourceConnection[]):
     (unavailable.length ? ` Источник ${unavailable.map(sourceName).join(', ')} недоступен для запуска.` : '')
 }
 
-export function SearchProfilesPage({ sourceService = fixtureSourceService, searchService = fixtureSearchService }: {
+export function SearchProfilesPage({ sourceService = emptySourceService, searchService = emptySearchService }: {
   sourceService?: SourceService
   searchService?: SearchService
 }) {

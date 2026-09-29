@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ApplicationPackage } from '../../domain/application'
 import type { ApplicationService, JobService } from '../../services/contracts'
-import { fixtureApplicationService, fixtureJobService } from '../../services/fixtures'
+import { emptyJobService, unavailableApplicationService } from '../../services/runtime-empty'
 import { DocumentDiff } from './DocumentDiff'
 import { ProvenanceList } from './ProvenanceList'
 import { SendConfirmation } from './SendConfirmation'
 
-export function ApplicationReviewPage({ jobId, applicationService = fixtureApplicationService, jobService = fixtureJobService }: {
+export function ApplicationReviewPage({ jobId, applicationService = unavailableApplicationService, jobService = emptyJobService }: {
   jobId: string | null
   applicationService?: ApplicationService
   jobService?: JobService
@@ -63,7 +63,7 @@ export function ApplicationReviewPage({ jobId, applicationService = fixtureAppli
       </li>)}</ul> : <p>Блокеров нет.</p>}
     </section>
     {error && <p role="alert">{error}</p>}
-    {pkg.sendState === 'sent' ? <p role="status">Отклик отправлен в демонстрационном режиме. Реальной отправки не было.</p> :
+    {pkg.sendState === 'sent' ? <p role="status">Отклик отправлен.</p> :
       <SendConfirmation pkg={pkg} busy={busy} onConfirmContent={() => update(() => applicationService.confirmContent(pkg.id))} onSend={send} />}
   </article>
 }

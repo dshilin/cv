@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { JobDetails, JobService } from '../../services/contracts'
-import { fixtureJobService } from '../../services/fixtures'
+import { emptyJobService } from '../../services/runtime-empty'
 import { JobMetadata } from './JobsPage'
 import { MatchExplanation } from './MatchExplanation'
 
-export function JobDetailsPage({ jobService = fixtureJobService }: { jobService?: JobService }) {
+export function JobDetailsPage({ jobService = emptyJobService }: { jobService?: JobService }) {
   const { id } = useParams()
   const [job, setJob] = useState<JobDetails | null>(null)
   const [error, setError] = useState(false)

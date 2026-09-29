@@ -43,11 +43,11 @@ Codex; [корневой README](../README.md) содержит только т�
 | SPEC-004 | [Дизайн веб-интерфейса CV Maker](superpowers/specs/2026-09-24-cv-maker-web-interface-design.md) | UX-поток от профиля до подтверждённого отклика |
 | SPEC-005 | [Дизайн backend профилей резюме](superpowers/specs/2026-09-25-resume-profile-backend-design.md) | Черновики импорта без LLM, общая база кандидата и несколько профилей; редакция 1.3 одобрена |
 | SPEC-006 | [Дизайн backend-интеграции LLM-провайдеров](superpowers/specs/2026-09-28-llm-provider-integration-design.md) | Owner-scoped backend connections и общий текстовый интерфейс OpenAI, OpenAI-compatible, YandexGPT и GigaChat; прикладные сценарии исключены; ожидает review |
-| SPEC-007 | [ТЗ на исправление работы с профилями и черновиками резюме](superpowers/specs/2026-09-28-resume-drafts-ux-fix-design.md) | Терминология профиля специализации, личные разделы профиля, сохранение и поиск черновиков, статусы и блоки опыта; draft, ожидает review |
+| SPEC-007 | [ТЗ на исправление работы с профилями и черновиками резюме](superpowers/specs/2026-09-28-resume-drafts-ux-fix-design.md) | Терминология профиля специализации, личные разделы и факты, общие контакты из импорта, сохранение и поиск черновиков, статусы, блоки опыта и запрет фиктивных runtime-данных во всех окружениях; draft, ожидает review |
 | PLAN-001 | [План реализации веб-интерфейса](superpowers/plans/2026-09-24-cv-maker-web-interface-plan.md) | Тестируемые этапы реализации интерфейсного MVP |
 | PLAN-002 | [План backend профилей резюме](superpowers/plans/2026-09-25-resume-profile-backend-plan.md) | Редакция 1.2 одобрена пользователем; задачи жизненного цикла выполняются |
 | PLAN-003 | [План backend-интеграции LLM](superpowers/plans/2026-09-28-llm-backend-integration-plan.md) | План backend connections и внутреннего gateway по SPEC-006; одобрен пользователем к Native-исполнению |
-| PLAN-004 | [План UX профилей и черновиков](superpowers/plans/2026-09-28-resume-drafts-ux-fix-plan.md) | Реализация SPEC-007; одобрен поручением пользователя «выполняй» после уточнения Q-011 |
+| PLAN-004 | [План UX профилей и черновиков](superpowers/plans/2026-09-28-resume-drafts-ux-fix-plan.md) | Реализация SPEC-007 во всех окружениях, включая отсутствие фиктивных runtime-данных; одобрен поручением пользователя «выполняй» после уточнения Q-011 |
 | TRACE-001 | [Реестр критериев](requirements/traceability.md) | Указатели на исходные критерии и инварианты |
 | ADR-001 | [Единое хранение](decisions/ADR-001-documentation.md) | Основание структуры и границы миграции |
 | ADR-002 | [Мягкое удаление и хранение черновиков](decisions/ADR-002-soft-deletion-and-draft-retention.md) | Пользовательское решение для удаления и жизненного цикла черновиков |

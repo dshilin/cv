@@ -1,7 +1,6 @@
 import type { SourceConnection } from '../../domain/search'
 
-export const sourceNames: Record<string, string> = { 'example-board': 'Example Board' }
-export const sourceName = (id: string) => sourceNames[id] ?? id
+export const sourceName = (id: string) => id
 
 const statusLabels = {
   disconnected: 'не подключён', connected: 'подключён',
@@ -9,8 +8,8 @@ const statusLabels = {
 }
 const consentLabels = { missing: 'не предоставлено', granted: 'предоставлено', revoked: 'отозвано' }
 const tokenLabels = {
-  absent: 'отсутствует', valid: 'действителен (демонстрация)',
-  expired: 'истёк (демонстрация)', error: 'ошибка проверки (демонстрация)',
+  absent: 'отсутствует', valid: 'действителен',
+  expired: 'истёк', error: 'ошибка проверки',
 }
 
 export function SourceCard({ connection, onConnect, onCheck, onDisconnect }: {
@@ -21,7 +20,7 @@ export function SourceCard({ connection, onConnect, onCheck, onDisconnect }: {
 }) {
   return <section className="profile-card" aria-label={sourceName(connection.id)}>
     <h2>{sourceName(connection.id)}</h2>
-    <p>Доступность интеграции: демонстрационный источник</p>
+    <p>Состояние подключения к источнику вакансий.</p>
     <p>Назначение разрешения: поиск и чтение вакансий.</p>
     <p>Используемые данные: поисковые запросы и область поиска.</p>
     <p>Согласие на поиск: {consentLabels[connection.consent]}</p>

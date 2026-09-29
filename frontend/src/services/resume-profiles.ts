@@ -47,8 +47,8 @@ export function createResumeProfileApi(baseUrl = import.meta.env.VITE_API_BASE_U
     update: (id: string, patch: Partial<Pick<ResumeProfile, 'name' | 'headline' | 'summary' | 'target_roles' | 'search_preferences' | 'section_order'>>) =>
       request<ResumeProfile>(`/profiles/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
     listDrafts: () => request<ResumeDraftSummary[]>('/resume-drafts'),
-    updateDraftTitle: (draftId: string, title: string) => request<ResumeDraft>(
-      `/resume-drafts/${draftId}`, { method: 'PATCH', body: JSON.stringify({ title }) },
+    saveDraft: (draftId: string, changes: { title?: string; blocks?: { id: string; text: string }[] }) => request<ResumeDraft>(
+      `/resume-drafts/${draftId}`, { method: 'PATCH', body: JSON.stringify(changes) },
     ),
     reviewDraft: (draftId: string) => request<ResumeDraft>(`/resume-drafts/${draftId}/review`, { method: 'POST' }),
     createDraft: () => request<ResumeDraft>('/resume-drafts', { method: 'POST' }),

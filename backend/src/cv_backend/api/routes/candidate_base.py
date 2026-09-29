@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -63,9 +63,12 @@ def update_candidate_base(
 @router.post("/contacts", status_code=status.HTTP_201_CREATED)
 def create_contact(
     contact: ContactItemInput,
+    response: Response,
     owner_id: UUID = Depends(get_current_user_id), session: Session = Depends(get_db_session)
 ) -> dict[str, Any]:
-    item = CandidateRepository(session).add_items(owner_id, [contact])[0]
+    item, created = CandidateRepository(session).add_contact_if_missing(owner_id, contact)
+    if not created:
+        response.status_code = status.HTTP_200_OK
     session.commit()
     return {"id": item.id, "kind": item.item_type, "status": item.status, **item.payload}
 

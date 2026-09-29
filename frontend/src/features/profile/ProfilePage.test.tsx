@@ -79,7 +79,7 @@ describe('ProfilePage', () => {
     renderProfile()
 
     const fact = await screen.findByRole('listitem', { name: 'TypeScript' })
-    expect(within(fact).getByText('Источник: resume:example.pdf')).toBeVisible()
+    expect(within(fact).getByText('Источник: Загружено из резюме')).toBeVisible()
     expect(within(fact).getByRole('button', { name: 'Подтвердить' })).toBeVisible()
     expect(within(fact).getByRole('button', { name: 'Исправить' })).toBeVisible()
     expect(within(fact).getByRole('button', { name: 'Отклонить' })).toBeVisible()
@@ -88,7 +88,7 @@ describe('ProfilePage', () => {
 
     expect(await within(fact).findByText('Статус: Подтверждено')).toBeVisible()
     expect(within(fact).getByText('TypeScript')).toBeVisible()
-    expect(within(fact).getByText('Источник: resume:example.pdf')).toBeVisible()
+    expect(within(fact).getByText('Источник: Загружено из резюме')).toBeVisible()
   })
 
   it('edits a fact only after the user saves the new value', async () => {
@@ -96,7 +96,7 @@ describe('ProfilePage', () => {
     const fact = await screen.findByRole('listitem', { name: 'TypeScript' })
 
     fireEvent.click(within(fact).getByRole('button', { name: 'Исправить' }))
-    fireEvent.change(within(fact).getByRole('textbox', { name: 'Текст факта' }), { target: { value: 'React' } })
+    fireEvent.change(within(fact).getByRole('textbox', { name: 'Факт для резюме' }), { target: { value: 'React' } })
     expect((await service.load()).facts.find(({ id }) => id === 'skill')?.value).toBe('TypeScript')
 
     fireEvent.click(within(fact).getByRole('button', { name: 'Сохранить исправление' }))
@@ -104,21 +104,17 @@ describe('ProfilePage', () => {
     expect((await service.load()).facts.find(({ id }) => id === 'skill')?.value).toBe('React')
   })
 
-  it('lets the user fill a missing fact source from its readiness blocker', async () => {
-    const profile = blockedProfile()
-    profile.facts[1].provenance = ''
-    const service = renderProfile(profile)
+  it('explains fact provenance and does not offer the technical source for editing', async () => {
+    const service = renderProfile()
 
-    const blocker = await screen.findByRole('link', { name: 'Указать источник факта' })
-    expect(blocker).toHaveAttribute('href', '#fact-skill')
-    const fact = screen.getByRole('listitem', { name: 'TypeScript' })
+    const fact = await screen.findByRole('listitem', { name: 'TypeScript' })
     fireEvent.click(within(fact).getByRole('button', { name: 'Исправить' }))
-    fireEvent.change(within(fact).getByRole('textbox', { name: 'Источник факта' }), { target: { value: 'user:skills' } })
+    expect(within(fact).getByRole('textbox', { name: 'Факт для резюме' })).toBeVisible()
+    expect(within(fact).queryByRole('textbox', { name: 'Источник факта' })).not.toBeInTheDocument()
     fireEvent.click(within(fact).getByRole('button', { name: 'Сохранить исправление' }))
 
-    expect(await within(fact).findByText('Источник: user:skills')).toBeVisible()
-    expect((await service.load()).facts.find(({ id }) => id === 'skill')?.provenance).toBe('user:skills')
-    expect(screen.queryByRole('link', { name: 'Указать источник факта' })).not.toBeInTheDocument()
+    expect(await within(fact).findByText('Источник: Загружено из резюме')).toBeVisible()
+    expect((await service.load()).facts.find(({ id }) => id === 'skill')?.provenance).toBe('resume:example.pdf')
   })
 
   it('keeps the correction form open when saving fails', async () => {
@@ -132,7 +128,7 @@ describe('ProfilePage', () => {
     fireEvent.click(within(fact).getByRole('button', { name: 'Сохранить исправление' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменение')
-    expect(within(fact).getByRole('textbox', { name: 'Текст факта' })).toBeVisible()
+    expect(within(fact).getByRole('textbox', { name: 'Факт для резюме' })).toBeVisible()
   })
 
   it('rejects an extracted fact without treating it as confirmed', async () => {

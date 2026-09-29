@@ -1,17 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { SettingsService } from '../../services/contracts'
-import { createFixtureApplicationService, createFixtureJobService, createFixtureProfileService, createFixtureSearchService, createFixtureSettingsService, createFixtureSourceService } from '../../services/fixtures'
 import { createLLMConnectionApi, LLMApiError } from '../../services/llm-connections'
 import type { LLMConnectionInput, LLMConnectionService, LLMConnectionSummary, LLMProvider } from '../../services/llm-connections'
-
-const fixtureSettings = createFixtureSettingsService(
-  createFixtureProfileService(),
-  createFixtureSourceService(),
-  createFixtureSearchService(createFixtureSourceService()),
-  createFixtureJobService(),
-  createFixtureApplicationService(createFixtureProfileService(), createFixtureJobService()),
-)
 
 const defaultLLMService = createLLMConnectionApi()
 
@@ -49,10 +39,7 @@ function apiErrorMessage(error: unknown) {
   return 'Backend не смог выполнить запрос. Повторите попытку.'
 }
 
-export function SettingsPage({ service = fixtureSettings, llmService = defaultLLMService }: { service?: SettingsService; llmService?: LLMConnectionService }) {
-  const [sourceCount, setSourceCount] = useState(0)
-  const [status, setStatus] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
+export function SettingsPage({ llmService = defaultLLMService }: { llmService?: LLMConnectionService }) {
   const [connections, setConnections] = useState<LLMConnectionSummary[]>([])
   const [connectionLoadError, setConnectionLoadError] = useState('')
   const [provider, setProvider] = useState<LLMProvider>('openai')
@@ -64,17 +51,12 @@ export function SettingsPage({ service = fixtureSettings, llmService = defaultLL
   const [connectionBusy, setConnectionBusy] = useState(false)
   const [checkingId, setCheckingId] = useState<string | null>(null)
   const [connectionNotice, setConnectionNotice] = useState<{ text: string; error: boolean } | null>(null)
-  useEffect(() => { void service.listSources().then((sources) => setSourceCount(sources.length)) }, [service])
   useEffect(() => {
     let current = true
     llmService.list().then((items) => { if (current) { setConnections(items); setConnectionLoadError('') } })
       .catch((error: unknown) => { if (current) setConnectionLoadError(apiErrorMessage(error)) })
     return () => { current = false }
   }, [llmService])
-  async function revokeConsent() { await service.revokeConsent(); setStatus('Согласие отозвано') }
-  async function disableAutomation() { await service.disableAutomation(); setStatus('Автоматизация отключена') }
-  async function deleteData() { await service.deleteData(); setConfirmDelete(false); setStatus('Локальные данные удалены') }
-
   function resetProviderFields(nextProvider: LLMProvider) {
     setProvider(nextProvider)
     setApiKey('')
@@ -135,8 +117,7 @@ export function SettingsPage({ service = fixtureSettings, llmService = defaultLL
 
   return <section className="profile-page">
     <h1>Настройки</h1>
-    <p>Управление согласием на поиск, автоматизацией и локальными данными.</p>
-    <p>Подключённых источников: {sourceCount}</p>
+    <p>Настройки подключённых LLM-провайдеров.</p>
     <div className="profile-card llm-connections">
       <h2>Подключение LLM</h2>
       <p>Ключ хранится зашифрованным на сервере. После сохранения его нельзя просмотреть повторно.</p>
@@ -182,21 +163,6 @@ export function SettingsPage({ service = fixtureSettings, llmService = defaultLL
         </li>)}
       </ul>}
     </div>
-    <div className="profile-card">
-      <h2>Контроль доступа и автоматизации</h2>
-      <button type="button" onClick={() => { void revokeConsent() }}>Отозвать согласие</button>
-      <button type="button" onClick={() => { void disableAutomation() }}>Отключить автоматизацию</button>
-    </div>
-    <div className="profile-card">
-      <h2>Удаление данных</h2>
-      <p>Удаляет локальные fixture-данные, поисковые профили, вакансии и черновики откликов.</p>
-      {!confirmDelete && <button type="button" onClick={() => setConfirmDelete(true)}>Удалить данные</button>}
-      {confirmDelete && <div role="alertdialog" aria-label="Подтверждение удаления">
-        <p>Это действие нельзя отменить.</p>
-        <button type="button" onClick={() => { void deleteData() }}>Подтвердить удаление</button>
-        <button type="button" onClick={() => setConfirmDelete(false)}>Отмена</button>
-      </div>}
-    </div>
-    {status && <p role="status">{status}</p>}
+    <p>Настройки поиска, вакансий и откликов станут доступны после подключения соответствующих сервисов.</p>
   </section>
 }

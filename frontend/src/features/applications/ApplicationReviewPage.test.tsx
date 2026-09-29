@@ -43,9 +43,9 @@ describe('application review', () => {
     expect(screen.getByRole('button', { name: 'Подтвердить и отправить' })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Подтвердить содержание' }))
     expect(await screen.findByRole('button', { name: 'Подтвердить и отправить' })).toBeEnabled()
-    expect(screen.queryByText(/отправлен в демонстрационном режиме/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Отклик отправлен.')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Подтвердить и отправить' }))
-    expect(await screen.findByText(/отправлен в демонстрационном режиме/i)).toBeVisible()
+    expect(await screen.findByText('Отклик отправлен.')).toBeVisible()
   })
 
   it('keeps send blocked when a selected fact is unconfirmed', async () => {

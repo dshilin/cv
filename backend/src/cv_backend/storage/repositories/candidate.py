@@ -54,6 +54,25 @@ class CandidateRepository:
             result.append(row)
         return result
 
+    def add_contact_if_missing(self, owner_id: UUID, contact: CandidateItemInput) -> tuple[CandidateItemModel, bool]:
+        data = contact.model_dump(mode="json")
+        if data.get("kind") != "contact":
+            raise ValueError("Contact input required")
+        label = str(data["label"]).strip().casefold()
+        value = str(data["value"]).strip().casefold()
+        existing = self.session.scalars(
+            select(CandidateItemModel).where(
+                CandidateItemModel.owner_id == owner_id,
+                CandidateItemModel.item_type == "contact",
+                CandidateItemModel.is_deleted.is_(False),
+            )
+        ).all()
+        for item in existing:
+            if (str(item.payload.get("label", "")).strip().casefold() == label
+                    and str(item.payload.get("value", "")).strip().casefold() == value):
+                return item, False
+        return self.add_items(owner_id, [contact])[0], True
+
     def get_item(self, owner_id: UUID, item_id: UUID) -> CandidateItemModel | None:
         return self.session.scalar(
             select(CandidateItemModel)

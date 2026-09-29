@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { SourceConnection } from '../../domain/search'
 import type { SourceService } from '../../services/contracts'
-import { fixtureSourceService } from '../../services/fixtures'
+import { emptySourceService } from '../../services/runtime-empty'
 import { SourceCard } from './SourceCard'
 
-export function SourcesPage({ service = fixtureSourceService }: { service?: SourceService }) {
+export function SourcesPage({ service = emptySourceService }: { service?: SourceService }) {
   const [connections, setConnections] = useState<SourceConnection[]>([])
   const [error, setError] = useState('')
   useEffect(() => {
@@ -22,7 +22,7 @@ export function SourcesPage({ service = fixtureSourceService }: { service?: Sour
   return <div className="profile-page">
     <h1>Сервисы поиска</h1>
     <p>Разрешение на поиск в источнике отдельно от входа в CV Maker и разрешения на отправку отклика.</p>
-    <p>Example Board — локальная демонстрация. Кнопка подключения не запускает внешний OAuth.</p>
+    {!error && connections.length === 0 && <p>Источники поиска не подключены. Доступные интеграции появятся после их настройки.</p>}
     {error && <p role="alert">{error}</p>}
     <div className="profile-grid">
       {connections.map((connection) => <SourceCard key={connection.id} connection={connection}

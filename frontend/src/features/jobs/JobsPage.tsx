@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { JobService, JobStatus, JobSummary } from '../../services/contracts'
-import { fixtureJobService } from '../../services/fixtures'
+import { emptyJobService } from '../../services/runtime-empty'
 import { MatchExplanation } from './MatchExplanation'
 
 export const jobStatusLabels: Record<JobStatus, string> = {
@@ -13,7 +13,7 @@ export function JobMetadata({ job }: { job: JobSummary }) {
   return <p>Статус: {jobStatusLabels[job.status]} · Источник: {job.source} · Дата: {new Date(`${job.publishedAt}T00:00:00Z`).toLocaleDateString('ru-RU', { timeZone: 'UTC' })} · Оценка: {job.score}/100</p>
 }
 
-export function JobsPage({ jobService = fixtureJobService }: { jobService?: JobService }) {
+export function JobsPage({ jobService = emptyJobService }: { jobService?: JobService }) {
   const [jobs, setJobs] = useState<JobSummary[] | null>(null)
   const [error, setError] = useState(false)
   useEffect(() => {

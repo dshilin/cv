@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createResumeProfileApi, type ResumeDraft, type ResumeDraftSummary } from '../../services/resume-profiles'
+import { findContactSuggestions, type ContactSuggestion } from './contact-suggestions'
 
 const api = createResumeProfileApi()
 const blockTitles: Record<string, string> = {
@@ -29,6 +30,8 @@ export function ResumeDraftsPage() {
   const [experienceText, setExperienceText] = useState('')
   const [filter, setFilter] = useState<'all' | 'needs_user_review' | 'reviewed'>('all')
   const [saveState, setSaveState] = useState<'saved' | 'dirty' | 'saving' | 'error'>('saved')
+  const [savedContactKeys, setSavedContactKeys] = useState<Set<string>>(new Set())
+  const [savingContactKey, setSavingContactKey] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function refreshList() {
@@ -57,7 +60,7 @@ export function ResumeDraftsPage() {
 
   function openDraft(value: ResumeDraft) {
     setDraft(value); setTitle(value.title); setTexts(Object.fromEntries(value.blocks.map((block) => [block.id, block.text])))
-    setSaveState('saved'); setError('')
+    setSaveState('saved'); setSavedContactKeys(new Set()); setError('')
   }
   async function selectDraft(id: string) {
     if (saveState !== 'saved' && !window.confirm('Есть несохранённые изменения. Перейти без сохранения?')) return
@@ -85,16 +88,32 @@ export function ResumeDraftsPage() {
     if (!draft) return
     setSaveState('saving'); setError('')
     try {
-      let updated = draft
-      if (title.trim() !== updated.title) updated = await api.updateDraftTitle(updated.draft_id, title.trim())
-      for (const block of updated.blocks) {
-        const changed = texts[block.id] ?? block.text
-        if (changed !== block.text) updated = await api.editBlock(updated.draft_id, block.id, changed)
+      const changedTitle = title.trim() !== draft.title ? title.trim() : undefined
+      const changedBlocks = draft.blocks
+        .filter((block) => (texts[block.id] ?? block.text) !== block.text)
+        .map((block) => ({ id: block.id, text: texts[block.id] ?? block.text }))
+      if (changedTitle === undefined && changedBlocks.length === 0) {
+        setSaveState('saved')
+        return
       }
-      openDraft(await api.getDraft(updated.draft_id))
+      const updated = await api.saveDraft(draft.draft_id, {
+        ...(changedTitle === undefined ? {} : { title: changedTitle }),
+        ...(changedBlocks.length === 0 ? {} : { blocks: changedBlocks }),
+      })
+      openDraft(updated)
       await refreshList()
       setSaveState('saved')
     } catch (reason) { setSaveState('error'); setError(`Не удалось сохранить. Ваш текст остался в форме. ${(reason as Error).message}`) }
+  }
+  async function saveContact(blockId: string, contact: ContactSuggestion) {
+    const key = `${blockId}:${contact.label}:${contact.value.toLocaleLowerCase()}`
+    setSavingContactKey(key); setError('')
+    try {
+      await api.addContact(contact)
+      setSavedContactKeys((current) => new Set(current).add(key))
+    } catch (reason) {
+      setError(`Не удалось сохранить контакт. ${(reason as Error).message}`)
+    } finally { setSavingContactKey(null) }
   }
   async function markReviewed() {
     if (!draft || saveState !== 'saved') return
@@ -137,11 +156,26 @@ export function ResumeDraftsPage() {
         {draft.blocks.map((block) => {
           const experienceNumber = block.kind === 'experience' ? draft.blocks.filter((item) => item.kind === 'experience' && item.ordinal <= block.ordinal).length : 0
           const heading = block.kind === 'experience' ? `Опыт работы ${experienceNumber}` : block.heading ?? blockTitles[block.kind] ?? block.kind
+          const contacts = block.kind === 'unparsed' ? findContactSuggestions(texts[block.id] ?? block.text) : []
           return <article className="resume-draft-block" key={block.id}>
             <h3>{heading}</h3><label htmlFor={`draft-${block.id}`}>Текст раздела</label>
             <textarea id={`draft-${block.id}`} value={texts[block.id] ?? block.text} rows={7} onChange={(event) => {
               setTexts((current) => ({ ...current, [block.id]: event.target.value })); setSaveState('dirty')
             }} />
+            {contacts.length > 0 && <section className="draft-contact-suggestions" aria-label="Контакты в нераспознанном тексте">
+              <h4>Найдены возможные контакты</h4>
+              <p>Выберите, какие значения добавить в общую базу кандидата. Текст черновика останется без изменений.</p>
+              <ul>{contacts.map((contact) => {
+                const key = `${block.id}:${contact.label}:${contact.value.toLocaleLowerCase()}`
+                const saved = savedContactKeys.has(key)
+                return <li key={key}>
+                  <span>{contact.label}: {contact.value}</span>
+                  <button type="button" disabled={saved || savingContactKey === key} onClick={() => { void saveContact(block.id, contact) }}>
+                    {saved ? 'Добавлено в общие контакты' : savingContactKey === key ? 'Сохраняю…' : 'Добавить в общие контакты'}
+                  </button>
+                </li>
+              })}</ul>
+            </section>}
           </article>
         })}
       </div>

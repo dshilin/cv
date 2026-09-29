@@ -3,8 +3,9 @@ import { Link, useOutletContext } from 'react-router-dom'
 import type { ExperienceProfile, ProfileSection } from '../../domain/profile'
 import { evaluateProfileReadiness, type ReadinessBlocker } from '../../domain/readiness'
 import type { ProfileService } from '../../services/contracts'
-import { fixtureProfileService } from '../../services/fixtures'
+import { emptyProfileService } from '../../services/runtime-empty'
 import { ProfileSectionCard, sectionLabels } from './ProfileSectionCard'
+import { CandidateIdentityCard } from './CandidateIdentityCard'
 
 const sections: ProfileSection[] = [
   'basics', 'employment', 'projects', 'skills', 'education', 'languages', 'additional',
@@ -32,7 +33,7 @@ function blockerLink(blocker: ReadinessBlocker, profile: ExperienceProfile): { h
 
 export function ProfilePage({ service, onProfileChange }: Props) {
   const outlet = useOutletContext<ProfileOutletContext | null>()
-  const profileService = service ?? outlet?.profileService ?? fixtureProfileService
+  const profileService = service ?? outlet?.profileService ?? emptyProfileService
   const notifyProfileChange = onProfileChange ?? outlet?.onProfileChange
   const [profile, setProfile] = useState<ExperienceProfile | null>(null)
   const [error, setError] = useState('')
@@ -71,7 +72,8 @@ export function ProfilePage({ service, onProfileChange }: Props) {
   return (
     <div className="profile-page">
       <h1>Профиль</h1>
-      <p>Проверьте факты опыта и их источники.</p>
+      <p>Факт — утверждение о кандидате для будущего резюме. Источник показывает, откуда оно взялось и как проверить его точность.</p>
+      <CandidateIdentityCard />
       {error && <p role="alert">{error}</p>}
       {readiness.ready ? (
         <div className="readiness-summary">
@@ -89,6 +91,13 @@ export function ProfilePage({ service, onProfileChange }: Props) {
           </ul>
         </section>
       )}
+      {profile.facts.length === 0 && profile.conflicts.length === 0 && profile.questions.length === 0 ? (
+        <section className="readiness-summary" aria-label="Профиль опыта пока пуст">
+          <h2>Профиль опыта пока пуст</h2>
+          <p>Загрузите резюме в черновики, чтобы проверить и перенести подтверждённые сведения в базу кандидата.</p>
+          <Link to="/resume-drafts">Открыть черновики резюме</Link>
+        </section>
+      ) : null}
       {(profile.conflicts.length > 0 || profile.questions.length > 0) && (
         <section className="profile-card" aria-label="Противоречия и вопросы">
           <h2>Противоречия и вопросы</h2>
@@ -128,7 +137,7 @@ export function ProfilePage({ service, onProfileChange }: Props) {
           </ul>
         </section>
       )}
-      <div className="profile-grid">
+      {profile.facts.length > 0 && <div className="profile-grid">
         {sections.map((section) => (
           <ProfileSectionCard
             key={section}
@@ -138,10 +147,13 @@ export function ProfilePage({ service, onProfileChange }: Props) {
             onConfirm={async (id) => { await run(() => profileService.reviewFact({ id, decision: 'confirm' })) }}
             onReject={async (id) => { await run(() => profileService.reviewFact({ id, decision: 'reject' })) }}
             onRestore={async (id) => { await run(() => profileService.reviewFact({ id, decision: 'restore' })) }}
-            onUpdate={(id, value, provenance) => run(() => profileService.updateFact({ id, value, provenance }))}
+            onUpdate={(id, value) => {
+              const fact = profile.facts.find((item) => item.id === id)
+              return fact ? run(() => profileService.updateFact({ id, value, provenance: fact.provenance })) : Promise.resolve(false)
+            }}
           />
         ))}
-      </div>
+      </div>}
     </div>
   )
 }

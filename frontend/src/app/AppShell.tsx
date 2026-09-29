@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { ExperienceProfile } from '../domain/profile'
 import { evaluateProfileReadiness } from '../domain/readiness'
 import type { ProfileService } from '../services/contracts'
-import { fixtureProfileService, fixtureSearchService } from '../services/fixtures'
+import { emptyProfileService, emptySearchService } from '../services/runtime-empty'
 
 const navigation = [
   { to: '/profile', label: 'Профиль', end: true },
@@ -17,7 +17,7 @@ const navigation = [
   { to: '/settings', label: 'Настройки' },
 ]
 
-export function AppShell({ profileService = fixtureProfileService }: { profileService?: ProfileService }) {
+export function AppShell({ profileService = emptyProfileService }: { profileService?: ProfileService }) {
   const [profile, setProfile] = useState<ExperienceProfile | null>(null)
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [searchActive, setSearchActive] = useState(false)
@@ -38,7 +38,7 @@ export function AppShell({ profileService = fixtureProfileService }: { profileSe
       return
     }
     let current = true
-    fixtureSearchService.list().then((profiles) => { if (current) setSearchActive(profiles.some((item) => item.active)) })
+    emptySearchService.list().then((profiles) => { if (current) setSearchActive(profiles.some((item) => item.active)) })
     return () => { current = false }
   }, [location.key, location.pathname])
   const profileReady = profile ? evaluateProfileReadiness(profile).ready : false

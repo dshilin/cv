@@ -64,9 +64,15 @@ class DraftListItem(BaseModel):
     total_blocks: int
 
 
-class DraftTitleRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-    title: str = Field(min_length=1, max_length=160)
+class DraftBlockEditRequest(BaseModel):
+    id: UUID
+    text: str = Field(max_length=100_000)
+
+
+class DraftSaveRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    blocks: list[DraftBlockEditRequest] | None = None
 
 
 def _response(draft, repository: DraftRepository) -> DraftResponse:
@@ -160,16 +166,35 @@ def get_draft(
 
 
 @router.patch("/resume-drafts/{draft_id}", response_model=DraftResponse)
-def update_draft_title(
+def save_draft(
     draft_id: UUID,
-    data: DraftTitleRequest,
+    data: DraftSaveRequest,
     owner_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_db_session),
 ) -> DraftResponse:
     repository = DraftRepository(session)
-    draft = repository.update_title(owner_id, draft_id, data.title)
+    draft = repository.get(owner_id, draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
+    requested_blocks = data.blocks or []
+    if len({item.id for item in requested_blocks}) != len(requested_blocks):
+        raise HTTPException(status_code=422, detail="A block may only be saved once per request")
+    blocks_by_id = {block.id: block for block in draft.blocks}
+    for item in requested_blocks:
+        if item.id not in blocks_by_id:
+            raise HTTPException(status_code=404, detail="Draft block not found")
+
+    changed = False
+    if data.title is not None and draft.title != data.title:
+        draft.title = data.title
+        changed = True
+    for item in requested_blocks:
+        block = blocks_by_id[item.id]
+        if block.text != item.text:
+            block.text = item.text
+            changed = True
+    if changed:
+        repository._mark_edited(draft)
     session.commit()
     return _response(draft, repository)
 

@@ -38,6 +38,36 @@ def test_user_creates_empty_draft_and_adds_experience_as_its_own_block(client):
     assert client.get("/api/v1/candidate-base/items").json() == []
 
 
+def test_draft_save_updates_title_and_multiple_blocks_atomically(client):
+    draft = client.post("/api/v1/resume-drafts").json()
+    current = client.post(
+        f"/api/v1/resume-drafts/{draft['draft_id']}/experience-blocks",
+        json={"text": "Old role"},
+    ).json()
+    block_id = current["blocks"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/resume-drafts/{draft['draft_id']}",
+        json={"title": "Updated resume", "blocks": [{"id": block_id, "text": "New role"}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Updated resume"
+    assert response.json()["blocks"][0]["text"] == "New role"
+
+
+def test_draft_save_rejects_unknown_block_without_partially_updating_title(client):
+    draft = client.post("/api/v1/resume-drafts").json()
+    response = client.patch(
+        f"/api/v1/resume-drafts/{draft['draft_id']}",
+        json={"title": "Must not persist", "blocks": [{"id": str(uuid4()), "text": "Unknown"}]},
+    )
+
+    assert response.status_code == 404
+    saved = client.get(f"/api/v1/resume-drafts/{draft['draft_id']}").json()
+    assert saved["title"] == draft["title"]
+
+
 def test_profile_patch_does_not_change_another_profile(client):
     one = client.post("/api/v1/profiles", json={"name": "AI"}).json()
     two = client.post("/api/v1/profiles", json={"name": "QA"}).json()

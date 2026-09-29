@@ -6,7 +6,7 @@ type Props = {
   onConfirm: (id: string) => Promise<void>
   onReject: (id: string) => Promise<void>
   onRestore: (id: string) => Promise<void>
-  onUpdate: (id: string, value: string, provenance: string) => Promise<boolean>
+  onUpdate: (id: string, value: string) => Promise<boolean>
 }
 
 const statusLabels = {
@@ -15,10 +15,15 @@ const statusLabels = {
   not_applicable: 'Не применимо', rejected: 'Отклонено',
 }
 
+function sourceLabel(provenance: string) {
+  if (provenance.startsWith('resume:')) return 'Загружено из резюме'
+  if (provenance.startsWith('user:')) return 'Добавлено пользователем'
+  return provenance || 'не указан'
+}
+
 export function FactReviewList({ facts, onConfirm, onReject, onRestore, onUpdate }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const [draftSource, setDraftSource] = useState('')
 
   return (
     <ul className="fact-list">
@@ -26,14 +31,14 @@ export function FactReviewList({ facts, onConfirm, onReject, onRestore, onUpdate
         <li key={fact.id} id={`fact-${fact.id}`} aria-label={fact.value}>
           <p>{fact.value}</p>
           <p>Статус: {statusLabels[fact.status]}</p>
-          <p>Источник: {fact.provenance || 'не указан'}</p>
+          <p>Источник: {sourceLabel(fact.provenance)}</p>
+          <p className="fact-source-help">Источник помогает проверить, откуда взялось это утверждение. Имя кандидата редактируется отдельно.</p>
           {editingId === fact.id ? (
             <form onSubmit={async (event) => {
               event.preventDefault()
-              if (await onUpdate(fact.id, draft, draftSource)) setEditingId(null)
+              if (await onUpdate(fact.id, draft)) setEditingId(null)
             }}>
-              <label>Текст факта <input value={draft} onChange={(event) => setDraft(event.target.value)} required /></label>
-              <label>Источник факта <input value={draftSource} onChange={(event) => setDraftSource(event.target.value)} required /></label>
+              <label>Факт для резюме <input value={draft} onChange={(event) => setDraft(event.target.value)} required /></label>
               <button type="submit">Сохранить исправление</button>
               <button type="button" onClick={() => setEditingId(null)}>Отмена</button>
             </form>
@@ -48,7 +53,6 @@ export function FactReviewList({ facts, onConfirm, onReject, onRestore, onUpdate
               {fact.status !== 'rejected' && (
                 <button type="button" onClick={() => {
                   setDraft(fact.value)
-                  setDraftSource(fact.provenance)
                   setEditingId(fact.id)
                 }}>Исправить</button>
               )}

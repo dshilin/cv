@@ -9,7 +9,7 @@ export function SendConfirmation({ pkg, busy, onConfirmContent, onSend }: {
 }) {
   return <section className="profile-card" aria-label="Подтверждение отправки">
     <h2>Подтверждение</h2>
-    <p>Отправка доступна после проверки содержания и устранения блокеров. В этой версии действие выполняется только в локальной демонстрации.</p>
+    <p>Отправка доступна после проверки содержания и устранения блокеров.</p>
     <button type="button" disabled={busy || pkg.sendState !== 'draft'} onClick={onConfirmContent}>Подтвердить содержание</button>
     <button type="button" disabled={busy || !canSendApplication(pkg)} onClick={onSend}>Подтвердить и отправить</button>
   </section>

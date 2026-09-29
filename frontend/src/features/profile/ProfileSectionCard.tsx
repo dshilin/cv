@@ -20,7 +20,7 @@ type Props = {
   onConfirm: (id: string) => Promise<void>
   onReject: (id: string) => Promise<void>
   onRestore: (id: string) => Promise<void>
-  onUpdate: (id: string, value: string, provenance: string) => Promise<boolean>
+  onUpdate: (id: string, value: string) => Promise<boolean>
 }
 
 export function ProfileSectionCard({ section, status, facts, onConfirm, onReject, onRestore, onUpdate }: Props) {
